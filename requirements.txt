@@ -1,0 +1,10 @@
+ultralytics
+opencv-python
+scikit-image
+kagglehub
+pandas
+numpy
+matplotlib
+seaborn
+pyyaml
+tqdm
