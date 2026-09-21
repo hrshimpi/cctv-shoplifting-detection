@@ -15,9 +15,17 @@ a fixed layout.
 
 import json
 import shutil
+import sys
 from pathlib import Path
 
 import kagglehub
+
+# The tree/box-drawing characters below aren't representable in the cp1252
+# fallback Python uses on Windows when stdout isn't a real console (piped
+# output, Git Bash, redirected to a file) — force UTF-8 so this doesn't
+# crash mid-print in those cases.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 DATASET_SLUG = "simuletic/cctv-shoplifting-detection-dataset-yolo-and-vlm"
 
