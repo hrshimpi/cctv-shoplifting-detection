@@ -96,7 +96,8 @@ def mirror_into_project(cache_path: Path) -> Path:
     """Copy the kagglehub cache download into the project's data/ dir."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    if any(DATA_DIR.iterdir()):
+    existing = [p for p in DATA_DIR.iterdir() if p.name != ".gitkeep"]
+    if existing:
         print(f"\ndata/ already has contents at {DATA_DIR}, skipping copy.")
         return DATA_DIR
 
