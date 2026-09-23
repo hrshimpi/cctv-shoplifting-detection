@@ -1,7 +1,7 @@
 """
 Shared dataset-discovery helpers for the CCTV shoplifting dataset.
 
-Both src/data/eda.py and src/detection/prepare_yolo_dataset.py need the
+Both src/data/eda.py and src/detection/prepare_yolo_data.py need the
 same "figure out what's actually in data/" logic - class config, VLM
 per-video labels, image/label directories. This module is the one place
 that logic lives, so nothing downstream re-guesses the dataset's

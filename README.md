@@ -20,7 +20,7 @@ final deliverable.
 
 - [x] Step 1: Repo scaffolding, dataset download, EDA
 - [x] Step 2: Classical motion/SSIM baseline
-- [ ] Step 3: YOLOv8 fine-tuning
+- [x] Step 3: YOLOv8 fine-tuning + VLM captioning + classical-vs-DL comparison
 - [ ] Step 4: Final Colab notebook combining both approaches
 
 ## Repository structure
@@ -33,18 +33,30 @@ final deliverable.
 │   ├── data/              # download_dataset.py, eda.py
 │   ├── classical_cv/      # motion_baseline.py (headless), select_roi_interactive.py
 │   │                       # (local-only GUI), run_baseline_demo.py
-│   ├── detection/         # prepare_yolo_dataset.py, (later) training/inference
-│   └── utils/             # dataset_discovery.py — shared discovery logic, used by
-│                           # both src/data/ and src/detection/ so nothing re-guesses
-│                           # the dataset's structure independently
+│   ├── detection/         # prepare_yolo_data.py, train_yolo.py, evaluate_yolo.py,
+│   │                       # infer.py, caption_module.py
+│   └── utils/             # dataset_discovery.py (shared discovery logic) and
+│                           # compare_pipeline.py (classical vs. YOLO, same video)
 ├── outputs/               # Generated plots, prepared datasets, weights (gitignored)
 │   ├── eda/               # plots from eda.py
 │   ├── classical_baseline/ # annotated videos + alert logs from run_baseline_demo.py
 │   ├── alerts/            # flagged-frame JPEGs from the classical baseline
-│   └── yolo_dataset/      # 2-class YOLO dataset built by prepare_yolo_dataset.py
+│   ├── yolo_dataset/      # 2-class YOLO dataset built by prepare_yolo_data.py
+│   ├── weights/           # cached pretrained checkpoints (e.g. yolov8n.pt)
+│   ├── yolo_runs/         # train/eval/infer run folders (ultralytics' own layout)
+│   └── compare_pipeline/  # combined classical+YOLO side-by-side videos
+├── reports/yolo/          # small, real eval artifacts that ARE committed:
+│                           # confusion_matrix.png, pr_curve.png, loss_curves.png,
+│                           # results.csv, val_metrics_summary.csv
 ├── requirements.txt
 └── README.md
 ```
+
+Trained weights (`*.pt`), the `outputs/yolo_runs/` tree, and the raw
+dataset are all gitignored - large and/or fully regenerable by re-running
+the scripts. The handful of small plots/CSVs this README quotes numbers
+from are copied into `reports/yolo/`, which is *not* gitignored, so the
+actual evidence behind the numbers ships with the repo.
 
 ## Setup
 
@@ -116,7 +128,7 @@ the headless `motion_baseline.py` module.
 ### Prepare the YOLO training dataset
 
 ```bash
-python src/detection/prepare_yolo_dataset.py
+python src/detection/prepare_yolo_data.py
 ```
 
 The raw labels are YOLO-*pose* format with a single class (`0` = person,
@@ -128,6 +140,57 @@ by re-running this script): `images/{train,val}/`, `labels/{train,val}/`,
 and a `data.yaml` ready for `ultralytics` training. See "YOLO training
 dataset" below for what it actually produced and why the split works the
 way it does.
+
+### Train, evaluate, and run the YOLOv8 detector
+
+```bash
+python src/detection/train_yolo.py --epochs 30 --imgsz 320 --batch 8 --device cpu
+python src/detection/evaluate_yolo.py
+python src/detection/infer.py --source outputs/yolo_dataset/images/val
+```
+
+`train_yolo.py` fine-tunes a pretrained `yolov8n.pt` (cached to
+`outputs/weights/`, not left at the repo root) via `ultralytics`. Model
+size, epochs, batch, and image size are all CLI args (or pass a config
+dict straight to `train()`) so the same script scales from this CPU run
+up to a real GPU without code changes. Runs are written to
+`outputs/yolo_runs/<name>/` (ultralytics' own layout).
+
+`evaluate_yolo.py` runs `model.val()` (which saves its own confusion
+matrix + PR/F1/P/R curves) and separately reloads the training run's
+`results.csv` to plot loss curves - both copied into the committed
+`reports/yolo/` for this README (see "Model: YOLOv8 fine-tuning" below).
+
+`infer.py` accepts an image, a folder of images, or a video as
+`--source` and saves annotated output (boxes + class + confidence, drawn
+by `ultralytics` itself) under `outputs/yolo_runs/<name>/`.
+
+### Caption demo
+
+```bash
+python src/detection/caption_module.py
+```
+
+Pairs each sample frame's YOLO detection with the dataset's own
+ground-truth VLM caption for that exact frame (see "Dataset" above) -
+step 1's EDA already found real captions here, so this loads and pairs
+them rather than running a pretrained captioning model. Prints
+`YOLO: <class>, <confidence> confidence` next to `Caption: <ground-truth
+scene description>` for 6 sample val frames, and logs the same as JSONL
+to `outputs/yolo_runs/caption_demo.jsonl`.
+
+### Compare classical vs. YOLO
+
+```bash
+python src/utils/compare_pipeline.py
+```
+
+Runs both detectors - step 2's classical SSIM/ROI baseline and this
+step's fine-tuned YOLOv8 - on the same real clips, frame by frame, and
+writes one combined side-by-side annotated video per clip to
+`outputs/compare_pipeline/`, plus a short table of how many frames each
+one flagged. See "Classical vs. deep learning" below for the real
+numbers and what they show.
 
 ## Dataset
 
@@ -275,7 +338,7 @@ raw pixels to one fixed reference. See limitations below.
 
 ## YOLO training dataset
 
-`prepare_yolo_dataset.py` turns the raw download above into the dataset
+`prepare_yolo_data.py` turns the raw download above into the dataset
 step 3 (YOLOv8 fine-tuning) will actually train on. What it uses, where
 it's stored, and how it works:
 
@@ -321,6 +384,95 @@ footage, which has different camera noise, compression artifacts,
 lighting, and behavior distributions. This gap should be treated as a
 limitation of the project, not something the classical or YOLO baseline
 is expected to fully overcome.
+
+## Model: YOLOv8 fine-tuning
+
+Fine-tuned `yolov8n.pt` (the smallest YOLOv8 checkpoint, so this fits a
+free Colab GPU - or, as actually run here, a plain CPU) on the 2-class
+dataset above: 30 epochs, `imgsz=320`, `batch=8`, `device=cpu`. Full
+training took about 18 minutes on a 12-core CPU with no GPU - the same
+settings would run in a couple of minutes on a Colab T4.
+
+**Real validation metrics** (130 val images, 275 instances; full CSV and
+plots in `reports/yolo/`):
+
+| Class | Images | Instances | Precision | Recall | mAP50 | mAP50-95 |
+|---|---|---|---|---|---|---|
+| all | 130 | 275 | 0.497 | 0.445 | 0.283 | 0.181 |
+| not_shoplifting_person | 49 | 111 | 0.393 | 0.441 | 0.263 | 0.189 |
+| shoplifting_person | 81 | 164 | 0.600 | 0.449 | 0.303 | 0.173 |
+
+Training and validation loss both decrease over the 30 epochs
+(`reports/yolo/loss_curves.png`) - train loss drops smoothly, val loss is
+noisier (130 images is a small validation set) but trends down too, so
+the model is genuinely learning, not memorizing noise.
+
+**The confusion matrix (`reports/yolo/confusion_matrix.png`) tells a more
+specific story than the aggregate numbers**: of 164 true `shoplifting_person`
+instances, the model correctly predicted only 9. It confused 35 of them
+for `not_shoplifting_person` and missed 120 entirely (predicted
+background). In other words, the model is much better at noticing *a
+person* than at deciding *which* class that person belongs to - which
+makes sense for a single-frame detector on this dataset: the visual
+difference between "holding an item" and "concealing an item" is often a
+matter of hand position and motion *over time*, not something visible in
+one static frame. 30 epochs on 326 training images is also a genuinely
+small fine-tune - more data or more epochs would likely close some of
+this gap, but the model shouldn't be expected to have solved single-frame
+shoplifting classification from this alone.
+
+**Caption demo** (`caption_module.py`, real output, val frames the model
+was not trained on) - pairs each detection with the dataset's own
+ground-truth caption for that exact frame:
+
+| Frame | YOLO prediction | Ground-truth caption |
+|---|---|---|
+| `not_shoplifting4_f0000.png` | `not_shoplifting_person`, 0.35 | "The subject stands in the aisle carrying a white tote bag on their left shoulder, holding a folded black garment in both hands and inspecting it." |
+| `shoplifting4_f0081.png` | `not_shoplifting_person`, 0.30 (**misclassified**) | "The subject lowers the garment to waist level, uses both hands to open the top of the white tote bag, and stuffs the folded clothing completely inside the bag." |
+| `shoplifting4_f0162.png` | `not_shoplifting_person`, 0.26 (**misclassified**) | "With empty hands, the subject adjusts the tote bag strap on their shoulder, looks briefly down the aisle, and begins to step away from the display rack." |
+
+The `shoplifting4_f0081` example is the actual concealment moment
+according to the ground-truth caption, and the model calls it
+`not_shoplifting_person` - a concrete instance of the confusion matrix
+finding above, not just an abstract number.
+
+## Classical vs. deep learning
+
+`compare_pipeline.py` ran both detectors on the same two real clips
+(`shoplifting1`, `not_shoplifting1` - same camera, same table, same
+actor; see "Baseline" above):
+
+| Video | Frames | Classical alerts | YOLO-flagged frames | YOLO avg. confidence |
+|---|---|---|---|---|
+| `shoplifting1` | 145 | 130 | 145 | 0.382 |
+| `not_shoplifting1` | 145 | 138 | 145 | 0.441 |
+
+YOLO flags essentially every frame (145/145 in both clips) because a
+person is visible almost the entire time and the model reliably detects
+*a person* - that part of the task is easy for it. The classical
+detector flags fewer frames (130-138/145) because it only reacts once
+the ROI's pixels actually change, not just because someone is on screen.
+
+**The real difference is qualitative, not just the counts** - the same
+frame (frame 60 of `shoplifting1`, the moment the box gets pushed into
+the jacket) side by side in
+`outputs/compare_pipeline/shoplifting1_side_by_side.mp4`:
+- **Classical (left):** a red box over the now-empty tabletop spot,
+  `SSIM=0.555`. It correctly notices *something changed* but has no idea
+  what.
+- **YOLO (right):** a blue box correctly drawn around the *person*, but
+  labeled `not_shoplifting_person 0.49` - it correctly localizes *who*,
+  but at this exact moment gets *what they're doing* wrong.
+
+Neither one alone gives a trustworthy verdict: the classical detector
+can't tell restocking from theft (see "Baseline" limitations above), and
+this fine-tune's class prediction is unreliable on the harder class (see
+the confusion matrix above). What each one is actually good at is
+different and complementary - motion detection for "something happened
+here," and object detection for "here's where the person is" - which is
+the practical case for combining both rather than picking one, even
+though this model's current per-frame class accuracy isn't yet good
+enough to trust on its own.
 
 ## License / Attribution
 

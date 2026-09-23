@@ -1,0 +1,4 @@
+class,images,instances,precision,recall,mAP50,mAP50-95
+all,130,275,0.4965,0.4450,0.2833,0.1810
+not_shoplifting_person,49,111,0.393,0.441,0.263,0.189
+shoplifting_person,81,164,0.600,0.449,0.303,0.173

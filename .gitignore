@@ -39,6 +39,13 @@ data/*
 outputs/*
 !outputs/.gitkeep
 
+# Model weights (pretrained downloads + trained checkpoints) and
+# ultralytics' default run-output directory - never commit these
+*.pt
+*.pth
+*.onnx
+runs/
+
 # OS
 .DS_Store
 Thumbs.db

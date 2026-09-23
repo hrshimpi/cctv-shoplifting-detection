@@ -9,7 +9,7 @@ on real clips, and reports where alerts start/stop relative to the end of
 the clip. This is evidence the mechanism works on real footage, not a
 rigorous benchmark.
 
-Run after `python src/detection/prepare_yolo_dataset.py` (or just
+Run after `python src/detection/prepare_yolo_data.py` (or just
 download_dataset.py - this only needs the raw videos/ folder).
 """
 

@@ -148,6 +148,26 @@ class MotionROIDetector:
             cv2.imwrite(str(self.alerts_dir / f"frame_{frame_index:05d}.jpg"), frame)
 
 
+def draw_roi_overlay(frame: np.ndarray, roi: ROI, score: float, flagged: bool) -> np.ndarray:
+    """Return a copy of `frame` with the ROI box drawn - green while
+    quiet, red on an alert - and the SSIM score printed above it. Shared
+    by run_on_video() and compare_pipeline.py so both draw it identically."""
+    x, y, w, h = roi
+    annotated = frame.copy()
+    color = (0, 0, 255) if flagged else (0, 200, 0)
+    cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+    cv2.putText(
+        annotated,
+        f"SSIM={score:.3f}",
+        (x, max(y - 8, 12)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        color,
+        1,
+    )
+    return annotated
+
+
 def run_on_video(
     video_path: str | Path,
     roi: ROI,
@@ -187,7 +207,6 @@ def run_on_video(
         alerts_log_path=alerts_log_path,
     )
 
-    x, y, w, h = roi
     frame_index = 0
     try:
         while True:
@@ -198,19 +217,7 @@ def run_on_video(
             score, flagged = detector.process_frame(frame, frame_index)
 
             if writer is not None:
-                annotated = frame.copy()
-                color = (0, 0, 255) if flagged else (0, 200, 0)
-                cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
-                cv2.putText(
-                    annotated,
-                    f"SSIM={score:.3f}",
-                    (x, max(y - 8, 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    color,
-                    1,
-                )
-                writer.write(annotated)
+                writer.write(draw_roi_overlay(frame, roi, score, flagged))
 
             frame_index += 1
     finally:
