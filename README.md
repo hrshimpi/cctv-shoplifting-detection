@@ -1,34 +1,57 @@
 # CCTV Shoplifting Detection
 
-A computer vision portfolio project comparing two approaches to detecting
-shoplifting behavior in CCTV footage:
+A completed computer vision portfolio project comparing two approaches to
+detecting shoplifting behavior in CCTV footage:
 
 1. **Classical baseline** — a non-deep-learning motion/SSIM-based approach
    that flags frames with anomalous motion patterns, with no training
    required.
 2. **YOLOv8 detector** — fine-tuned on a synthetic CCTV shoplifting dataset
    with YOLO-format pose/keypoint annotations (single "person" class).
+3. **VLM captioning** — pairs detections with the dataset's own
+   ground-truth scene-description captions for a qualitative read on the
+   results.
 
-The final deliverable is a single self-contained Google Colab notebook
-(run via Google Drive mount) that reproduces both pipelines end-to-end.
+Built and run locally in VS Code across four steps, then consolidated into
+one self-contained Google Colab notebook —
+[`notebooks/CCTV_Shoplifting_Detection_Colab.ipynb`](notebooks/CCTV_Shoplifting_Detection_Colab.ipynb) —
+that reproduces the entire pipeline end-to-end after mounting Google Drive,
+runnable top-to-bottom via **Runtime → Run all**.
+
+## Results at a glance
+
+- **Classical SSIM/ROI baseline:** 130–138 of 145 frames flagged on real
+  sample clips. Correctly detects "something in the ROI changed," but
+  cannot tell a returned item from a concealed one — see "Baseline" below
+  for the concrete evidence.
+- **YOLOv8 (`yolov8n`, 30 epochs, fine-tuned):** precision 0.497, recall
+  0.445, mAP50 0.283, mAP50-95 0.181 overall. Reliably finds *people*, but
+  is markedly less reliable at classifying `shoplifting_person`
+  specifically (9/164 correct in the real confusion matrix) — see "Model:
+  YOLOv8 fine-tuning" below.
+- **Together:** complementary, not redundant — motion detection for
+  "something happened here," object detection for "here's who." Neither
+  is deployment-ready alone; see "Classical vs. deep learning" and "Future
+  work" below.
 
 ## Project status
 
-Working locally in VS Code with this GitHub repo through the development
-steps; the project will be consolidated into one Colab notebook as the
-final deliverable.
+Built locally in VS Code across four steps, then consolidated into one
+Colab notebook as the final deliverable (see "Run everything in Google
+Colab instead" under Setup).
 
 - [x] Step 1: Repo scaffolding, dataset download, EDA
 - [x] Step 2: Classical motion/SSIM baseline
 - [x] Step 3: YOLOv8 fine-tuning + VLM captioning + classical-vs-DL comparison
-- [ ] Step 4: Final Colab notebook combining both approaches
+- [x] Step 4: Final Colab notebook combining both approaches — tagged [`v1.0.0`](https://github.com/hrshimpi/cctv-shoplifting-detection/releases/tag/v1.0.0)
 
 ## Repository structure
 
 ```
 .
 ├── data/                  # Raw dataset, exactly as downloaded (gitignored)
-├── notebooks/             # Jupyter notebooks (EDA, experiments, final Colab notebook)
+├── notebooks/
+│   └── CCTV_Shoplifting_Detection_Colab.ipynb  # the final, self-contained notebook
 ├── src/
 │   ├── data/              # download_dataset.py, eda.py
 │   ├── classical_cv/      # motion_baseline.py (headless), select_roi_interactive.py
@@ -48,6 +71,7 @@ final deliverable.
 ├── reports/yolo/          # small, real eval artifacts that ARE committed:
 │                           # confusion_matrix.png, pr_curve.png, loss_curves.png,
 │                           # results.csv, val_metrics_summary.csv
+├── LICENSE                # MIT (code only - see "License" below)
 ├── requirements.txt
 └── README.md
 ```
@@ -191,6 +215,30 @@ writes one combined side-by-side annotated video per clip to
 `outputs/compare_pipeline/`, plus a short table of how many frames each
 one flagged. See "Classical vs. deep learning" below for the real
 numbers and what they show.
+
+### Run everything in Google Colab instead
+
+All of the above — dataset, EDA, classical baseline, YOLO training/eval/
+inference, captioning, comparison — is also reproducible with **no local
+setup at all**, via
+[`notebooks/CCTV_Shoplifting_Detection_Colab.ipynb`](notebooks/CCTV_Shoplifting_Detection_Colab.ipynb):
+
+1. Open the notebook in Google Colab (upload it, or open directly from
+   GitHub via Colab's "File → Open notebook → GitHub" using this repo's URL).
+2. Optionally add two Colab secrets (key icon, left sidebar) before running:
+   `KAGGLE_USERNAME` / `KAGGLE_KEY` (skip if you've already cached the
+   dataset to Drive from a previous run — see the notebook's "Dataset"
+   section).
+3. **Runtime → Run all.** The notebook mounts your Drive, clones this repo,
+   downloads/caches the dataset, and runs every step end-to-end — with
+   trained weights and logs written to
+   `/content/drive/MyDrive/cctv_shoplifting_outputs/` so they survive a
+   Colab disconnect.
+
+No GitHub token, password, or API key is ever pasted into a cell as plain
+text; see the notebook's own "Syncing results back to GitHub" cell for how
+to get results out again (Drive sync is the simple default; a Colab-secret
+GitHub token is the alternative if you want to push from inside Colab).
 
 ## Dataset
 
@@ -474,7 +522,45 @@ the practical case for combining both rather than picking one, even
 though this model's current per-frame class accuracy isn't yet good
 enough to trust on its own.
 
-## License / Attribution
+## Citations
 
-Dataset attribution: Simuletic, via Kaggle (see link above). This project
-uses the dataset for non-commercial research/portfolio purposes.
+**Dataset:** Simuletic. *CCTV Shoplifting Detection Dataset (YOLO and VLM)*.
+Kaggle. https://www.kaggle.com/datasets/simuletic/cctv-shoplifting-detection-dataset-yolo-and-vlm
+— synthetic CCTV footage with YOLO bounding-box/pose annotations and
+VLM-style scene captions. Used here for non-commercial research/portfolio
+purposes; see "Dataset" above for the real structure and numbers.
+
+**Classical baseline technique:** the SSIM/ROI change-detection approach in
+`src/classical_cv/motion_baseline.py` (watch a fixed region, flag it when
+it visibly changes from a reference) is a well-known, generic OpenCV/
+computer-vision technique for simple change detection — it isn't adapted
+from one specific article or paper, so no single citation applies here.
+
+## License
+
+Code in this repository is licensed under the [MIT License](LICENSE).
+
+The dataset itself is **not** covered by this license — it remains subject
+to Simuletic's terms on Kaggle (see the citation above) and is used here
+for non-commercial research/portfolio purposes only.
+
+## Future work
+
+- **More training data and epochs.** 456 frames from 8 videos and a
+  30-epoch CPU fine-tune are both small; more synthetic (or real) footage
+  and a longer/GPU training run would likely improve `shoplifting_person`
+  accuracy specifically.
+- **Temporal context for the YOLO detector.** The confusion matrix finding
+  — the model struggles to tell "holding" from "concealing" in a single
+  frame — suggests a multi-frame or video-level model (even a simple
+  classifier on top of per-frame detections) could close a real gap that
+  more single-frame data alone might not.
+- **Real (non-synthetic) validation footage**, even a small hand-labeled
+  set, to get an honest read on the sim-to-real gap flagged throughout
+  this README.
+- **A single combined alerting pipeline** that actually fuses the
+  classical and YOLO signals (e.g. only alert when both agree, or use the
+  classical detector as a cheap pre-filter before running YOLO) instead of
+  running them side by side for comparison only.
+- **Multi-camera / multi-ROI support** for the classical baseline, since
+  today it's one hand-picked ROI per camera angle.

@@ -27,9 +27,15 @@ DATA_YAML = PROJECT_ROOT / "outputs" / "yolo_dataset" / "data.yaml"
 RUNS_DIR = PROJECT_ROOT / "outputs" / "yolo_runs"
 
 
-def evaluate(weights: str | Path, data: str | Path = DATA_YAML, name: str = "eval", **val_kwargs):
+def evaluate(
+    weights: str | Path,
+    data: str | Path = DATA_YAML,
+    name: str = "eval",
+    project: str | Path = RUNS_DIR,
+    **val_kwargs,
+):
     model = YOLO(str(weights))
-    metrics = model.val(data=str(data), project=str(RUNS_DIR), name=name, exist_ok=True, plots=True, **val_kwargs)
+    metrics = model.val(data=str(data), project=str(project), name=name, exist_ok=True, plots=True, **val_kwargs)
 
     box = metrics.box
     summary = {
@@ -89,11 +95,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weights", default=str(RUNS_DIR / "train" / "weights" / "best.pt"))
     parser.add_argument("--data", default=str(DATA_YAML))
     parser.add_argument("--name", default="eval")
+    parser.add_argument("--project", default=str(RUNS_DIR), help="Where to write the eval run (e.g. a Drive path in Colab)")
     parser.add_argument("--train-run-dir", default=str(RUNS_DIR / "train"))
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    evaluate(weights=args.weights, data=args.data, name=args.name)
+    evaluate(weights=args.weights, data=args.data, name=args.name, project=args.project)
     plot_loss_curves(args.train_run_dir)

@@ -63,6 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--imgsz", type=int, default=320)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--project", default=str(RUNS_DIR), help="Where to write annotated output (e.g. a Drive path in Colab)")
     parser.add_argument("--name", default="infer")
     return parser.parse_args()
 
@@ -75,5 +76,6 @@ if __name__ == "__main__":
         conf=args.conf,
         imgsz=args.imgsz,
         device=args.device,
+        project=args.project,
         name=args.name,
     )
