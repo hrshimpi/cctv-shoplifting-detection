@@ -22,7 +22,7 @@ import kagglehub
 
 # The tree/box-drawing characters below aren't representable in the cp1252
 # fallback Python uses on Windows when stdout isn't a real console (piped
-# output, Git Bash, redirected to a file) — force UTF-8 so this doesn't
+# output, Git Bash, redirected to a file) - force UTF-8 so this doesn't
 # crash mid-print in those cases.
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")

@@ -1,0 +1,14 @@
+# Normalize all text files to LF in the repository, regardless of the
+# checking-out OS's line-ending convention. Without this, Windows clients
+# check text files out as CRLF while the repo stores LF, and every git
+# operation prints "LF will be replaced by CRLF" warnings.
+* text=auto eol=lf
+
+# Binary/generated formats git should never try to diff or convert.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.mp4 binary
+*.pt binary
+*.pth binary
+*.onnx binary

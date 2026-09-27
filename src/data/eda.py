@@ -1,7 +1,7 @@
 """
 Exploratory data analysis for the CCTV shoplifting detection dataset.
 
-This script does NOT hardcode the dataset's folder layout or class list —
+This script does NOT hardcode the dataset's folder layout or class list -
 everything below reflects what `download_dataset.py`'s tree/config dump
 actually showed when run against the real Kaggle download:
 

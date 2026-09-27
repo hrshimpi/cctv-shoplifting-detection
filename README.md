@@ -3,18 +3,18 @@
 A completed computer vision portfolio project comparing two approaches to
 detecting shoplifting behavior in CCTV footage:
 
-1. **Classical baseline** — a non-deep-learning motion/SSIM-based approach
+1. **Classical baseline** - a non-deep-learning motion/SSIM-based approach
    that flags frames with anomalous motion patterns, with no training
    required.
-2. **YOLOv8 detector** — fine-tuned on a synthetic CCTV shoplifting dataset
+2. **YOLOv8 detector** - fine-tuned on a synthetic CCTV shoplifting dataset
    with YOLO-format pose/keypoint annotations (single "person" class).
-3. **VLM captioning** — pairs detections with the dataset's own
+3. **VLM captioning** - pairs detections with the dataset's own
    ground-truth scene-description captions for a qualitative read on the
    results.
 
 Built and run locally in VS Code across four steps, then consolidated into
-one self-contained Google Colab notebook —
-[`notebooks/CCTV_Shoplifting_Detection_Colab.ipynb`](notebooks/CCTV_Shoplifting_Detection_Colab.ipynb) —
+one self-contained Google Colab notebook -
+[`notebooks/CCTV_Shoplifting_Detection_Colab.ipynb`](notebooks/CCTV_Shoplifting_Detection_Colab.ipynb) -
 that reproduces the entire pipeline end-to-end after mounting Google Drive,
 runnable top-to-bottom via **Runtime → Run all**.
 
@@ -22,14 +22,14 @@ runnable top-to-bottom via **Runtime → Run all**.
 
 - **Classical SSIM/ROI baseline:** 130–138 of 145 frames flagged on real
   sample clips. Correctly detects "something in the ROI changed," but
-  cannot tell a returned item from a concealed one — see "Baseline" below
+  cannot tell a returned item from a concealed one - see "Baseline" below
   for the concrete evidence.
 - **YOLOv8 (`yolov8n`, 30 epochs, fine-tuned):** precision 0.497, recall
   0.445, mAP50 0.283, mAP50-95 0.181 overall. Reliably finds *people*, but
   is markedly less reliable at classifying `shoplifting_person`
-  specifically (9/164 correct in the real confusion matrix) — see "Model:
+  specifically (9/164 correct in the real confusion matrix) - see "Model:
   YOLOv8 fine-tuning" below.
-- **Together:** complementary, not redundant — motion detection for
+- **Together:** complementary, not redundant - motion detection for
   "something happened here," object detection for "here's who." Neither
   is deployment-ready alone; see "Classical vs. deep learning" and "Future
   work" below.
@@ -43,7 +43,7 @@ Colab instead" under Setup).
 - [x] Step 1: Repo scaffolding, dataset download, EDA
 - [x] Step 2: Classical motion/SSIM baseline
 - [x] Step 3: YOLOv8 fine-tuning + VLM captioning + classical-vs-DL comparison
-- [x] Step 4: Final Colab notebook combining both approaches — tagged [`v1.0.0`](https://github.com/hrshimpi/cctv-shoplifting-detection/releases/tag/v1.0.0)
+- [x] Step 4: Final Colab notebook combining both approaches - tagged [`v1.0.0`](https://github.com/hrshimpi/cctv-shoplifting-detection/releases/tag/v1.0.0)
 
 ## Repository structure
 
@@ -111,10 +111,10 @@ python src/data/download_dataset.py
 ```
 
 This downloads the dataset via `kagglehub`, mirrors it into `data/`
-(gitignored — never committed), prints the full folder tree, and prints
+(gitignored - never committed), prints the full folder tree, and prints
 the contents of any `data.yaml` / `classes.txt` / caption-annotation JSON
 it finds. Nothing about the dataset's structure or class list is
-hardcoded elsewhere in this project — everything downstream reads it from
+hardcoded elsewhere in this project - everything downstream reads it from
 whatever config actually exists in the download.
 
 ### Run the EDA
@@ -136,7 +136,7 @@ example image/caption pairs pulled from the per-video VLM metadata.
 python src/classical_cv/run_baseline_demo.py
 ```
 
-Runs the SSIM/ROI motion baseline (step 2 — see "Baseline: classical
+Runs the SSIM/ROI motion baseline (step 2 - see "Baseline: classical
 motion detection" below) on real clips from `data/CCTV_Shoplifting_Dataset/videos/`,
 prints a frame-count / alerts / average-similarity summary for each, and
 writes an annotated video + JSONL alert log per clip to
@@ -146,7 +146,7 @@ dataset prep below.
 
 `src/classical_cv/select_roi_interactive.py` is a separate, local-only
 tool (uses `cv2.selectROI`, needs a real display) for picking your own
-ROI coordinates by hand on a new camera/clip — it is never imported by
+ROI coordinates by hand on a new camera/clip - it is never imported by
 the headless `motion_baseline.py` module.
 
 ### Prepare the YOLO training dataset
@@ -156,7 +156,7 @@ python src/detection/prepare_yolo_data.py
 ```
 
 The raw labels are YOLO-*pose* format with a single class (`0` = person,
-see "Real structure" below) — they don't encode shoplifting vs. not at
+see "Real structure" below) - they don't encode shoplifting vs. not at
 all. This script re-derives that class from the same VLM-labels metadata
 `eda.py` uses, strips the pose keypoints, and writes a plain 2-class YOLO
 *detection* dataset to `outputs/yolo_dataset/` (gitignored, regenerated
@@ -218,8 +218,8 @@ numbers and what they show.
 
 ### Run everything in Google Colab instead
 
-All of the above — dataset, EDA, classical baseline, YOLO training/eval/
-inference, captioning, comparison — is also reproducible with **no local
+All of the above - dataset, EDA, classical baseline, YOLO training/eval/
+inference, captioning, comparison - is also reproducible with **no local
 setup at all**, via
 [`notebooks/CCTV_Shoplifting_Detection_Colab.ipynb`](notebooks/CCTV_Shoplifting_Detection_Colab.ipynb):
 
@@ -227,10 +227,10 @@ setup at all**, via
    GitHub via Colab's "File → Open notebook → GitHub" using this repo's URL).
 2. Optionally add two Colab secrets (key icon, left sidebar) before running:
    `KAGGLE_USERNAME` / `KAGGLE_KEY` (skip if you've already cached the
-   dataset to Drive from a previous run — see the notebook's "Dataset"
+   dataset to Drive from a previous run - see the notebook's "Dataset"
    section).
 3. **Runtime → Run all.** The notebook mounts your Drive, clones this repo,
-   downloads/caches the dataset, and runs every step end-to-end — with
+   downloads/caches the dataset, and runs every step end-to-end - with
    trained weights and logs written to
    `/content/drive/MyDrive/cctv_shoplifting_outputs/` so they survive a
    Colab disconnect.
@@ -247,14 +247,14 @@ on Kaggle, created by **Simuletic**.
 
 **Real structure**, as discovered by actually running `download_dataset.py`
 and `eda.py` against the download (there is no `data.yaml` or
-`classes.txt` anywhere in it — nothing about this layout is hardcoded
+`classes.txt` anywhere in it - nothing about this layout is hardcoded
 elsewhere in the project; every script reads it at runtime):
 
 ```
 CCTV_Shoplifting_Dataset/
 ├── images/            456 flat PNG frames, "{video}_f{frame:04d}.png"
 ├── labels/             matching YOLO-pose .txt labels (see below)
-├── VLM-labels/         one JSON per source video (8 total) — not a
+├── VLM-labels/         one JSON per source video (8 total) - not a
 │                       single shared caption file
 ├── annotated_images/   pre-rendered visualizations (not used here)
 └── annotated_videos/, videos/   source + annotated MP4s (not used here)
@@ -263,17 +263,17 @@ CCTV_Shoplifting_Dataset/
 - **456 total sampled frames**, all **544×544 px** (uniform across every
   single image), sampled every 3rd frame from **8 short synthetic
   surveillance videos** (4 "shoplifting", 4 "not_shoplifting"). There is
-  **no train/val/test split** — it ships as one flat pool.
-- **Class distribution** — per-frame sequence label, read from each
+  **no train/val/test split** - it ships as one flat pool.
+- **Class distribution** - per-frame sequence label, read from each
   video's `is_anomaly_sequence` flag in `VLM-labels/*.json`:
   **260 shoplifting frames / 196 not_shoplifting frames**.
 - **Labels are YOLO *pose* format, not plain bounding boxes**: each line
   is `class_id xc yc w h` followed by **17 COCO-keypoint `(x, y,
   visibility)` triplets** for that detected person. `class_id` is always
-  `0` — a single detection class (person), not a multi-class problem.
+  `0` - a single detection class (person), not a multi-class problem.
   Across the dataset there are **771 person detections** in 456 frames
   (some frames have up to 4 people).
-- **VLM captions are not one shared file** — each of the 8 source videos
+- **VLM captions are not one shared file** - each of the 8 source videos
   has its own `VLM-labels/<video>_vlm_meta.json`, with a global scene
   description plus 3 chronological segments (setup / transition /
   resolution), each carrying its own `frame_range` and
@@ -295,7 +295,7 @@ Structural Similarity Index (SSIM) on denoised grayscale crops
 `structural_similarity`). No training, no labels, no GPU.
 
 **Headless by design.** `motion_baseline.py` never calls `cv2.imshow` or
-`cv2.selectROI` — it has to run inside Google Colab later, which has no
+`cv2.selectROI` - it has to run inside Google Colab later, which has no
 display. ROI coordinates come in as a plain `(x, y, w, h)` tuple or a
 small JSON config. Picking that ROI is the one step that genuinely needs
 a human eye on the footage, so it's split into its own local-only script
@@ -303,12 +303,12 @@ a human eye on the footage, so it's split into its own local-only script
 it is never imported by the headless module.
 
 **Two reference strategies**, both implemented in `MotionROIDetector`:
-- `"fixed"` — the first frame's ROI crop, frozen for the whole run. The
+- `"fixed"` - the first frame's ROI crop, frozen for the whole run. The
   textbook version of this technique. It drifts under lighting changes:
   if ambient light shifts later on, the whole ROI reads as "different"
   from a reference lit under earlier conditions, and every later frame
   false-alarms on nothing but brightness.
-- `"rolling"` — the reference is an EMA of the ROI crop, updated after
+- `"rolling"` - the reference is an EMA of the ROI crop, updated after
   every frame that does *not* alert (alert frames are excluded so a real
   change never gets quietly absorbed into the new "normal"). This is the
   deliberate upgrade over the naive fixed version.
@@ -322,7 +322,7 @@ pass a path.
 ### Real run on real footage
 
 `run_baseline_demo.py` picked ROI coordinates by hand off actual frames
-(not guessed) — e.g. for the electronics-table scene, cropping candidate
+(not guessed) - e.g. for the electronics-table scene, cropping candidate
 regions and looking at them directly showed the smartphone box sitting
 at roughly `x:[178,245], y:[345,405]` in frame 0. Threshold `0.8`, as
 specified, run against real clips from the raw download:
@@ -391,9 +391,9 @@ step 3 (YOLOv8 fine-tuning) will actually train on. What it uses, where
 it's stored, and how it works:
 
 - **Input:** the raw `data/CCTV_Shoplifting_Dataset/images/` +
-  `labels/` + `VLM-labels/*.json` described above — read-only, never
+  `labels/` + `VLM-labels/*.json` described above - read-only, never
   modified in place.
-- **Output location:** `outputs/yolo_dataset/` — **gitignored**, just
+- **Output location:** `outputs/yolo_dataset/` - **gitignored**, just
   like `data/` and `outputs/eda/`. It's a derived artifact, fully
   regenerated by re-running the script, so it's never committed; nothing
   downstream should assume it exists without running this script first.
@@ -406,12 +406,12 @@ it's stored, and how it works:
   - `0` = `not_shoplifting_person`
   - `1` = `shoplifting_person`
 
-  The 17 keypoint triplets after the bbox are dropped — this project's
+  The 17 keypoint triplets after the bbox are dropped - this project's
   YOLO half is a plain 2-class detector, not a pose model.
 - **Train/val split is by *video*, not by frame.** Frames are sampled
   every 3rd frame from the same 8 source videos, so a per-frame random
   split would put near-duplicate consecutive frames from one video on
-  both sides of the split — leaking information into validation and
+  both sides of the split - leaking information into validation and
   making its metrics meaningless. Instead, one whole video per class is
   held out for validation (currently the alphabetically-last video per
   class: `not_shoplifting4`, `shoplifting4`).
@@ -425,7 +425,7 @@ it's stored, and how it works:
   (val is smaller in video *count* but not in frame count here, since
   `shoplifting4` happens to be one of the two longer source videos.)
 
-**Known limitation — sim-to-real gap:** this dataset is **synthetic**
+**Known limitation - sim-to-real gap:** this dataset is **synthetic**
 (simulated CCTV footage), not real store surveillance recordings. A
 detector trained purely on it may not transfer cleanly to real CCTV
 footage, which has different camera noise, compression artifacts,
@@ -526,21 +526,21 @@ enough to trust on its own.
 
 **Dataset:** Simuletic. *CCTV Shoplifting Detection Dataset (YOLO and VLM)*.
 Kaggle. https://www.kaggle.com/datasets/simuletic/cctv-shoplifting-detection-dataset-yolo-and-vlm
-— synthetic CCTV footage with YOLO bounding-box/pose annotations and
+- synthetic CCTV footage with YOLO bounding-box/pose annotations and
 VLM-style scene captions. Used here for non-commercial research/portfolio
 purposes; see "Dataset" above for the real structure and numbers.
 
 **Classical baseline technique:** the SSIM/ROI change-detection approach in
 `src/classical_cv/motion_baseline.py` (watch a fixed region, flag it when
 it visibly changes from a reference) is a well-known, generic OpenCV/
-computer-vision technique for simple change detection — it isn't adapted
+computer-vision technique for simple change detection - it isn't adapted
 from one specific article or paper, so no single citation applies here.
 
 ## License
 
 Code in this repository is licensed under the [MIT License](LICENSE).
 
-The dataset itself is **not** covered by this license — it remains subject
+The dataset itself is **not** covered by this license - it remains subject
 to Simuletic's terms on Kaggle (see the citation above) and is used here
 for non-commercial research/portfolio purposes only.
 
@@ -551,8 +551,8 @@ for non-commercial research/portfolio purposes only.
   and a longer/GPU training run would likely improve `shoplifting_person`
   accuracy specifically.
 - **Temporal context for the YOLO detector.** The confusion matrix finding
-  — the model struggles to tell "holding" from "concealing" in a single
-  frame — suggests a multi-frame or video-level model (even a simple
+  - the model struggles to tell "holding" from "concealing" in a single
+  frame - suggests a multi-frame or video-level model (even a simple
   classifier on top of per-frame detections) could close a real gap that
   more single-frame data alone might not.
 - **Real (non-synthetic) validation footage**, even a small hand-labeled
