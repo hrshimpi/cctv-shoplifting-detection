@@ -1,5 +1,8 @@
 # CCTV Shoplifting Detection
 
+[![Tests](https://github.com/hrshimpi/cctv-shoplifting-detection/actions/workflows/tests.yml/badge.svg)](https://github.com/hrshimpi/cctv-shoplifting-detection/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A completed computer vision portfolio project comparing two approaches to
 detecting shoplifting behavior in CCTV footage:
 
@@ -49,6 +52,7 @@ Colab instead" under Setup).
 
 ```
 .
+├── .github/workflows/     # tests.yml - runs the test suite on every push
 ├── data/                  # Raw dataset, exactly as downloaded (gitignored)
 ├── notebooks/
 │   └── CCTV_Shoplifting_Detection_Colab.ipynb  # the final, self-contained notebook
@@ -71,7 +75,9 @@ Colab instead" under Setup).
 ├── reports/yolo/          # small, real eval artifacts that ARE committed:
 │                           # confusion_matrix.png, pr_curve.png, loss_curves.png,
 │                           # results.csv, val_metrics_summary.csv
+├── tests/                 # pytest unit tests (no dataset/GPU required)
 ├── LICENSE                # MIT (code only - see "License" below)
+├── pytest.ini
 ├── requirements.txt
 └── README.md
 ```
@@ -93,6 +99,19 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 ```
+
+### Running the tests
+
+```bash
+pytest -v
+```
+
+31 unit tests cover the dataset-discovery helpers, the SSIM/ROI
+detection logic (fixed vs. rolling reference, alert thresholding), the
+VLM caption lookup, and the label class-remap/video-holdout logic - all
+against small synthetic fixtures, so they run in seconds and don't need
+`data/` populated. These run automatically on every push via GitHub
+Actions (see the badge above and `.github/workflows/tests.yml`).
 
 ### Kaggle API credentials
 
