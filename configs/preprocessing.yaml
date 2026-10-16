@@ -1,0 +1,18 @@
+# Pose preprocessing config - starting values (step 1). Not hardcoded
+# into src/data/preprocessing.py; change here and re-run
+# scripts/run_preprocessing.py rather than editing code.
+
+# Minimum per-joint keypoint confidence to treat a joint as visible.
+confidence_threshold: 0.3
+
+# Longest gap (in real frame_id units, not array position) that gets
+# linearly interpolated. Longer gaps are left as missing/not visible.
+max_interpolation_gap: 5
+
+# Centered moving-average window (frames) for optional temporal
+# smoothing after interpolation. 1 disables smoothing.
+smoothing_window: 3
+
+# Temporal window length and stride (frames) for build_windows().
+window_length: 30
+stride: 15

@@ -1,11 +1,11 @@
-ultralytics
-opencv-python
-scikit-image
-kagglehub
-pandas
 numpy
+pandas
 matplotlib
-seaborn
 pyyaml
 tqdm
-pytest
+torch
+opencv-python
+
+# MotionBERT dependencies: TODO (step 3) - pinned once we know exactly
+# what the pretrained MotionBERT checkpoint/repo needs (e.g. specific
+# torch version, einops, timm, etc.).

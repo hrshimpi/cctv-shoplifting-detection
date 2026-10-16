@@ -33,18 +33,42 @@ ENV/
 .env
 kaggle.json
 
-# Project data & outputs (never commit dataset or trained weights)
-data/*
-!data/.gitkeep
+# Project data (never commit dataset content, keep structure + docs)
+data/retails/*
+!data/retails/.gitkeep
+
+data/external_video/videos/shoplifting/*
+!data/external_video/videos/shoplifting/.gitkeep
+data/external_video/videos/normal/*
+!data/external_video/videos/normal/.gitkeep
+data/external_video/frames/shoplifting/*
+!data/external_video/frames/shoplifting/.gitkeep
+data/external_video/frames/normal/*
+!data/external_video/frames/normal/.gitkeep
+
+# Outputs: checkpoints, logs, plots, demo videos (never commit, keep structure)
 outputs/*
 !outputs/.gitkeep
+!outputs/checkpoints/
+outputs/checkpoints/*
+!outputs/checkpoints/.gitkeep
+!outputs/logs/
+outputs/logs/*
+!outputs/logs/.gitkeep
+!outputs/plots/
+outputs/plots/*
+!outputs/plots/.gitkeep
 
-# Model weights (pretrained downloads + trained checkpoints) and
-# ultralytics' default run-output directory - never commit these
+# A top-level checkpoints/ dir, if anything ever writes one outside
+# outputs/checkpoints/. Anchored to the repo root so it doesn't also
+# match (and reignore the .gitkeep in) outputs/checkpoints/ above.
+/checkpoints/
+
+# Model weights and pretrained checkpoints - never commit these
 *.pt
 *.pth
 *.onnx
-runs/
+*.npz
 
 # OS
 .DS_Store
