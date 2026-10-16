@@ -145,16 +145,46 @@ def preprocess_track(
     confidence_threshold: float = 0.3,
     max_interpolation_gap: int = 5,
     smoothing_window: int = 3,
+    apply_normalization: bool = True,
 ) -> dict:
-    """Run the full per-track pipeline: sort, mask, interpolate, smooth,
-    center, scale. Returns frame_ids, normalized keypoints, and a
-    visibility mask (True = usable joint after interpolation)."""
+    """Run the per-track cleaning pipeline: sort, mask, interpolate,
+    smooth, and (unless apply_normalization=False) pelvis-center + scale.
+    Returns frame_ids, keypoints, and a visibility mask (True = usable
+    joint after interpolation).
+
+    apply_normalization=False skips the pelvis-centering/torso-scaling
+    steps, leaving keypoints in the same (pixel) coordinate space the
+    pose file used. The BiGRU branch (src/experiments/dataset.py) always
+    wants normalization on (the default); src/motionbert/lift.py wants it
+    off, since MotionBERT expects its own whole-sequence bounding-box
+    normalization (see src/motionbert/lift.py:crop_scale), not this
+    project's pelvis/torso convention.
+    """
     frame_ids, keypoints = track_to_array(track)
+
+    # RetailS occasionally ships a literal NaN confidence value (x, y
+    # still present and finite) rather than a low-but-real number -
+    # confirmed, not hypothetical: e.g. RetailS_test_realworld's
+    # 01_0257.json, person 1, frame_ids 9-11, every joint. Treat NaN the
+    # same as RetailS's own explicit zero-confidence entries (no
+    # information) rather than letting it propagate: `>= confidence_threshold`
+    # below already treats NaN as invisible (NaN comparisons are always
+    # False), so this only changes behavior for consumers that read the
+    # confidence value itself downstream - notably MotionBERT
+    # (src/motionbert/lift.py), which takes confidence as a real input
+    # channel and, unlike the 2D BiGRU branch (which discards this column
+    # before building features), has no tolerance for NaN: its temporal
+    # attention mixes all frames in a window together, so a NaN at even
+    # one frame silently contaminates the model's output for the entire
+    # window, not just that frame.
+    keypoints[:, :, 2] = np.nan_to_num(keypoints[:, :, 2], nan=0.0)
+
     mask = visibility_mask(keypoints, confidence_threshold)
     keypoints, still_missing = interpolate_short_gaps(frame_ids, keypoints, mask, max_interpolation_gap)
     keypoints = smooth(keypoints, smoothing_window)
-    keypoints = normalize_position(keypoints)
-    keypoints = normalize_scale(keypoints)
+    if apply_normalization:
+        keypoints = normalize_position(keypoints)
+        keypoints = normalize_scale(keypoints)
 
     return {
         "person_id": track.person_id,

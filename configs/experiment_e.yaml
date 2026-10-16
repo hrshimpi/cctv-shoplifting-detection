@@ -1,0 +1,36 @@
+# Experiment E: same 3D pose + velocity + geometry features as
+# experiment_d.yaml - the only difference is the model
+# (src/models/bigru_attention.py's BiGRUAttentionAutoencoder in place of
+# BiGRUAutoencoder), so any metric difference between D and E is
+# attributable to temporal attention, not to a different feature set.
+# Reuses D/C's cached MotionBERT lift (outputs/cache/motionbert_lift/) -
+# same subset/sampling/preprocessing parameters as experiment_c/d.yaml.
+
+experiment_name: experiment_e
+model: bigru_attention
+
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+window_length: 30
+stride: 15
+
+use_velocity: true
+use_acceleration: false
+use_geometry: true
+use_angles: false
+
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+
+batch_size: 32
+optimizer: adam
+learning_rate: 0.001
+epochs: 15
+val_fraction: 0.1
+max_train_pose_files: 10
+seed: 0
+max_eval_pose_files: 20
+
+threshold_percentile: 95.0

@@ -1,0 +1,42 @@
+# Experiment A: 2D pose only. BiGRU autoencoder, one-class (trained on
+# RetailS_train normal sequences only). See experiment_b.yaml for the
+# pose+velocity variant - identical hyperparameters, only use_velocity
+# differs, so any gap between the two is attributable to the feature
+# set, not to incidental tuning differences.
+
+experiment_name: experiment_a
+
+# Preprocessing (see src/data/preprocessing.py)
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+window_length: 30
+stride: 15
+
+# Feature flags (see src/features/motion_features.py)
+use_velocity: false
+use_acceleration: false
+
+# Model (see src/models/bigru_autoencoder.py)
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+
+# Training
+batch_size: 32
+optimizer: adam
+learning_rate: 0.001
+epochs: 15
+val_fraction: 0.1
+# How many RetailS_train pose files (out of 942) to sample for this run -
+# CPU-only training, so the full ~447k-window train set isn't feasible
+# in reasonable time; see README.md "Results" for the real wall-clock
+# numbers this was tuned against (50 files -> ~20k windows -> ~17 min/
+# experiment at 15 epochs on a 12-core CPU, timed empirically).
+max_train_pose_files: 50
+seed: 0
+
+# Decision threshold: the given percentile of the TRAINING set's (normal
+# only) reconstruction-error distribution - see
+# src/evaluation/metrics.py:choose_threshold.
+threshold_percentile: 95.0

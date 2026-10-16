@@ -1,0 +1,65 @@
+# Experiment C: lifted 3D pose only (MotionBERT, frozen - see
+# README.md "MotionBERT setup"). Identical to experiment_d.yaml in every
+# other respect - same preprocessing, same model size, same training
+# setup, same train-file sample - so any metric difference between C and
+# D is attributable to adding velocity/geometry features, not to
+# incidental tuning differences. Mirrors experiment_a.yaml/
+# experiment_b.yaml's own A-vs-B structure, one dimension up.
+
+experiment_name: experiment_c
+
+# Preprocessing (see src/data/preprocessing.py). Same values as
+# experiment_a/b.yaml; note apply_normalization is NOT one of these -
+# the 3D path always calls preprocess_track(apply_normalization=False)
+# (see src/experiments/dataset.py), since MotionBERT applies its own
+# normalization (src/motionbert/lift.py:crop_scale).
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+window_length: 30
+stride: 15
+
+# Feature flags (see src/features/motion_features.py build_feature_vector_3d)
+use_velocity: false
+use_acceleration: false
+use_geometry: false
+use_angles: false
+
+# Model (see src/models/bigru_autoencoder.py) - identical to A/B
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+
+# Training
+batch_size: 32
+optimizer: adam
+learning_rate: 0.001
+epochs: 15
+val_fraction: 0.1
+# How many RetailS_train pose files to sample for training. Much lower
+# than A/B's 50: a MotionBERT (DSTformer) forward pass per window is the
+# dominant cost of building 3D windows, measured at ~0.16s/window on a
+# 12-core CPU regardless of batch size (CPU matmul throughput doesn't
+# meaningfully benefit from batching the way a GPU would - checked
+# directly, not assumed) - ~400 windows/file, so 10 files is already
+# ~10-11 minutes of lifting. This cost is paid once and cached
+# (outputs/cache/motionbert_lift/, gitignored) - Experiment D reuses the
+# same lifted windows rather than re-lifting from scratch.
+max_train_pose_files: 10
+seed: 0
+
+# How many pose files to sample from EACH of test_realworld/test_staged
+# for evaluation - a deliberate, necessary deviation from A/B's
+# evaluate.py (which uses the FULL, unsampled test subsets): at
+# ~0.16s/window, the full 671 test pose files would take on the order of
+# 12 hours to lift. 20 files/subset keeps evaluation (~20-25 min/subset,
+# paid once and shared with D) in the same rough order of magnitude as
+# training. See README.md "Results" and "Limitations" for this tradeoff
+# stated plainly - evaluate.py reads this field and falls back to full
+# (None) evaluation when it's absent, which is what experiment_a/b.yaml do.
+max_eval_pose_files: 20
+
+# Decision threshold: the given percentile of the TRAINING set's (normal
+# only) reconstruction-error distribution - see
+# src/evaluation/metrics.py:choose_threshold.
+threshold_percentile: 95.0

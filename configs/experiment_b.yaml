@@ -1,0 +1,34 @@
+# Experiment B: 2D pose + velocity. Identical to experiment_a.yaml in
+# every other respect - same preprocessing, same model size, same
+# training setup, same train-file sample - so any metric difference
+# between A and B is attributable to adding velocity features, not to
+# incidental tuning differences.
+
+experiment_name: experiment_b
+
+# Preprocessing (see src/data/preprocessing.py)
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+window_length: 30
+stride: 15
+
+# Feature flags (see src/features/motion_features.py)
+use_velocity: true
+use_acceleration: false
+
+# Model (see src/models/bigru_autoencoder.py)
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+
+# Training
+batch_size: 32
+optimizer: adam
+learning_rate: 0.001
+epochs: 15
+val_fraction: 0.1
+max_train_pose_files: 50
+seed: 0
+
+threshold_percentile: 95.0

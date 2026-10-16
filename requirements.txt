@@ -5,7 +5,11 @@ pyyaml
 tqdm
 torch
 opencv-python
+scikit-learn
 
-# MotionBERT dependencies: TODO (step 3) - pinned once we know exactly
-# what the pretrained MotionBERT checkpoint/repo needs (e.g. specific
-# torch version, einops, timm, etc.).
+# MotionBERT (src/motionbert/lift.py, third_party/MotionBERT/) needs no
+# extra packages beyond the above - confirmed by reading its actual
+# imports (lib/model/DSTformer.py: torch, numpy, stdlib only), not by
+# installing MotionBERT's own requirements.txt wholesale (which pins an
+# old matplotlib that could conflict with the one above). See README.md
+# "MotionBERT setup".

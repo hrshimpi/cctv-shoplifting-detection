@@ -67,8 +67,13 @@ outputs/plots/*
 # Model weights and pretrained checkpoints - never commit these
 *.pt
 *.pth
+*.bin
 *.onnx
 *.npz
+
+# Third-party code, cloned locally per README.md setup instructions -
+# never vendored into this repo (large; has its own git history/license).
+third_party/
 
 # OS
 .DS_Store

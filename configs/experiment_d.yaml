@@ -1,0 +1,38 @@
+# Experiment D: lifted 3D pose + motion (velocity) + geometry features.
+# Identical to experiment_c.yaml in every other respect - see that file's
+# comments for the preprocessing/sampling/eval-cap rationale (shared by
+# both, and the expensive MotionBERT lift step itself is shared via the
+# cache in outputs/cache/motionbert_lift/ - D does not re-lift from
+# scratch after C has already run).
+
+experiment_name: experiment_d
+
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+window_length: 30
+stride: 15
+
+# Feature flags (see src/features/motion_features.py build_feature_vector_3d).
+# Joint angles (use_angles) are left off by default here, same spirit as
+# experiment_b.yaml leaving acceleration off - available, not assumed
+# necessary just because it's implemented.
+use_velocity: true
+use_acceleration: false
+use_geometry: true
+use_angles: false
+
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+
+batch_size: 32
+optimizer: adam
+learning_rate: 0.001
+epochs: 15
+val_fraction: 0.1
+max_train_pose_files: 10
+seed: 0
+max_eval_pose_files: 20
+
+threshold_percentile: 95.0
