@@ -2,25 +2,25 @@
 
 Course project for CSE 6367. Team: Harsha Prasad, Himanshu Shimpi.
 
-Status: step 4 of 5 done (temporal attention, Experiment E, the full
-A-E comparison, false-positive and per-camera analysis). Steps 1-3 also
-done. See "Project status" below.
+Status: all 5 steps done. See "Project status" below.
 
 ## Overview
 
 This project studies whether shoplifting behavior can be detected from
 2D/3D human pose sequences in retail CCTV footage, rather than from raw
-pixels. The pipeline under development is:
+pixels. The pipeline is:
 
 ```
-RetailS 2D pose -> MotionBERT -> 3D pose -> temporal anomaly detector
+RetailS 2D pose -> MotionBERT -> 3D pose -> temporal anomaly detector (BiGRU autoencoder, Experiments A-E)
 ```
 
-with an external-validation path intended to test the same trained
-detector on a different data source:
+with an external-validation/demo path that runs the same trained
+detector on raw video from a different data source
+(`scripts/run_demo.py` - see "Limitations" for why this path is
+illustration, not a benchmark):
 
 ```
-UCF-Crime raw video -> 2D pose detector -> MotionBERT -> 3D pose -> same temporal anomaly detector
+UCF-Crime raw video -> YOLO Pose + ByteTrack -> MotionBERT -> 3D pose -> same trained BiGRU autoencoder -> annotated output video
 ```
 
 Working from pose sequences instead of raw video is motivated by privacy
@@ -28,7 +28,9 @@ Working from pose sequences instead of raw video is motivated by privacy
 by the hypothesis that shoplifting-relevant motion (concealment gestures,
 dwell time, approach/retreat patterns) is a temporal signal that a
 pose-sequence model can learn more directly than a frame-level image
-classifier can.
+classifier can. "Results" below reports what was actually found -
+including where it complicates this hypothesis (e.g. the per-camera
+viewpoint-sensitivity finding).
 
 ## Project status
 
@@ -49,7 +51,16 @@ classifier can.
 - [x] Step 4: Temporal attention (Experiment E), the full A-E comparison,
       false-positive analysis, and per-camera viewpoint analysis - see
       "Results" below.
-- [ ] Step 5: Colab notebook consolidating the full pipeline
+- [x] Step 5: Raw-video demo (`scripts/run_demo.py` - pretrained YOLO
+      Pose + ByteTrack, the frozen MotionBERT lift, and the
+      best-performing trained BiGRU, rendered as an annotated output
+      video; nothing trained from scratch), the UCF-Crime dataset
+      section and demo/not-a-benchmark framing, the Colab notebook
+      (`notebooks/CCTV_Shoplifting_Colab.ipynb`), and this README's
+      final pass - see "Limitations" for this step's own honesty notes
+      (the demo was verified mechanically, not on real UCF-Crime
+      footage; the notebook's logic was verified locally, not inside an
+      actual Colab session).
 
 ## Repository structure
 
@@ -76,7 +87,8 @@ classifier can.
 │   ├── evaluate.py               # evaluates a trained checkpoint on both labeled test subsets
 │   ├── validate_joint_mapping.py # renders COCO-17 vs H36M-17 (+ 3D lift, if a checkpoint exists)
 │   ├── analyze_false_positives.py # traces/renders every false positive for a 2D experiment
-│   └── analyze_per_camera.py     # per-camera metric breakdown, best 2D vs. best 3D experiment
+│   ├── analyze_per_camera.py     # per-camera metric breakdown, best 2D vs. best 3D experiment
+│   └── run_demo.py               # raw-video demo: detect+track+pose -> 3D lift -> trained BiGRU -> annotated output
 ├── src/
 │   ├── data/                    # retails.py (loader), preprocessing.py (pipeline)
 │   ├── motionbert/               # lift.py - frozen pretrained MotionBERT, 2D->3D lifting
@@ -84,12 +96,14 @@ classifier can.
 │   ├── models/                   # bigru_autoencoder.py, bigru_attention.py - the two autoencoders
 │   ├── experiments/               # dataset.py - builds (features, labels[, metadata]) windows per subset
 │   ├── evaluation/                # metrics.py - precision/recall/F1/ROC-AUC/PR-AUC, shared by all experiments
-│   ├── demo/                      # step 5
+│   ├── demo/                      # video_pose.py (YOLO Pose + ByteTrack -> PersonTrack), render.py (annotated-video drawing)
 │   └── utils/                     # joint_mapping.py - COCO-17 <-> H36M-17
 ├── third_party/
-│   └── MotionBERT/               # official repo, `git clone`d locally (gitignored - see "MotionBERT setup")
-├── notebooks/                   # step 5 builds the Colab notebook here
-├── outputs/                     # checkpoints, logs, plots (gitignored)
+│   ├── MotionBERT/               # official repo, `git clone`d locally (gitignored - see "MotionBERT setup")
+│   └── yolo/                     # yolov8n-pose.pt (gitignored, auto-downloaded on first scripts/run_demo.py run)
+├── notebooks/
+│   └── CCTV_Shoplifting_Colab.ipynb # Colab notebook - imports src/ and scripts/ only, see "Colab setup"
+├── outputs/                     # checkpoints, logs, plots, cache, demo output (gitignored)
 ├── requirements.txt
 └── README.md
 ```
@@ -279,15 +293,114 @@ be downloaded by a script - see below).
    skipped - it does not fail or fake that panel. With a checkpoint in
    place, it additionally runs the real 2D->3D lift and renders it.
 
+### Running the raw-video demo
+
+```bash
+python scripts/run_demo.py --video data/external_video/videos/shoplifting/some_clip.mp4
+python scripts/run_demo.py --video <path> --experiment e --out outputs/demo/annotated.mp4
+```
+
+Requires a real video placed under `data/external_video/videos/` first
+(see "Dataset" below - **this path is for demo/external-validation
+only, not a benchmark**) and the MotionBERT checkpoint from
+"MotionBERT setup" above. `--experiment` picks which trained 3D
+checkpoint scores the video (`c`, `d`, or `e` - defaults to `d`, the
+best-performing one in "Results"; `a`/`b` aren't offered here since
+this pipeline is specifically the 3D one the task asked for). Nothing
+in this path is trained from scratch:
+
+- **Detection, 2D pose, tracking**: Ultralytics YOLO Pose
+  (`yolov8n-pose.pt`, pretrained, auto-downloaded on first run to
+  `third_party/yolo/` - a public GitHub release URL, no manual step
+  needed, unlike MotionBERT's checkpoint) plus its built-in ByteTrack
+  tracker. Confirmed (not assumed) that YOLO Pose's keypoint order is
+  the same COCO-17 order RetailS uses (checked against the installed
+  `ultralytics` package's own `coco-pose.yaml`), so no reindexing step
+  is needed before handing its output to this project's existing
+  preprocessing pipeline.
+- **2D->3D lift, features, scoring**: identical code path to
+  `scripts/evaluate.py` - `src/data/preprocessing.py`,
+  `src/motionbert/lift.py`, `src/features/motion_features.py`'s `*_3d`
+  functions, and the trained `BiGRUAutoencoder`/`BiGRUAttentionAutoencoder`
+  checkpoint from `scripts/train.py`.
+- **Output**: an annotated copy of the input video with each tracked
+  person's skeleton and a per-track running label (`normal`/`ANOMALY`,
+  color-coded, plus the raw score) - saved to
+  `outputs/demo/<video_stem>_annotated.mp4` by default.
+
+Verified mechanically with a short synthetic test clip (a real YOLO
+Pose detection, held static across ~45 looped frames, to exercise
+detection -> tracking -> preprocessing -> MotionBERT lift -> scoring ->
+rendering without crashing) - real tracks were detected, skeletons
+rendered correctly, and the pipeline ran end to end. That test does
+**not** validate real-world accuracy (a frozen, non-moving input is an
+unnatural case the model correctly treats as unlike anything in
+training) - running it on actual UCF-Crime footage, once added per
+"Dataset" below, is the real test and hasn't been done as of this
+writing.
+
+### Running the false-positive and per-camera analyses
+
+```bash
+python scripts/analyze_false_positives.py --experiment a
+python scripts/analyze_per_camera.py --exp-2d a --exp-3d d
+```
+
+Both require their listed experiments already trained/evaluated.
+`analyze_false_positives.py` only takes a 2D experiment (`a` or `b`) -
+it finds every false positive on the full test set, re-derives and
+renders the actual skeleton, and prints geometric descriptors; see
+"Results" for what it actually found. `analyze_per_camera.py` takes a
+`--exp-2d`/`--exp-3d` pair (default `a`/`d`, the best-performing of
+each per "Results"), forces the full `test_realworld` subset for the
+3D experiment specifically (overriding its usual eval sample cap - see
+the script's own docstring for why), and prints a per-camera ROC-AUC
+breakdown for both.
+
 ### Colab setup
 
-Not available yet - step 5 builds `notebooks/` as a Colab notebook that
-imports this same `src/` and `scripts/` code (no logic is reimplemented
-inline in the notebook). The MotionBERT checkpoint download in
-particular is manual in Colab too (same OneDrive 403 restriction) - the
-notebook will need the checkpoint uploaded to Drive or the Colab runtime
-directly, documented in full once step 5 builds the notebook. Nothing
-else in steps 1-4 is expected to be Colab-only.
+```
+notebooks/CCTV_Shoplifting_Colab.ipynb
+```
+
+Open in Google Colab (File -> Open notebook -> GitHub, paste this
+repo's URL, or upload the `.ipynb` directly). Run top to bottom. The
+notebook only calls this repo's own `scripts/`/`src/` code - no pipeline
+logic is reimplemented inline, same rule as every local script above.
+What it does, in order: mounts Drive; clones the repo and installs
+`requirements.txt`; symlinks `data/retails/` and `outputs/` to a
+persistent Drive folder (so a disconnect doesn't lose trained
+checkpoints, logs, or the MotionBERT lift cache, and so the multi-GB
+RetailS archive isn't re-downloaded every session); clones MotionBERT's
+code; checks for RetailS and the MotionBERT checkpoint on Drive,
+stopping with an explicit, specific instruction (not a silent failure)
+if either is missing on a fresh Drive; runs the preprocessing sanity
+check; trains (skipping experiments whose checkpoint already exists on
+Drive) and evaluates Experiments A-E; displays the full results table;
+runs and displays the false-positive analysis; runs and displays the
+per-camera analysis; and, only if a video file is present under
+`data/external_video/videos/{shoplifting,normal}/`, runs the raw-video
+demo and shows the annotated output inline.
+
+**Two manual, one-time Drive setup steps** (same reasons as the local
+"MotionBERT setup" and "Getting the RetailS dataset" sections - neither
+download can be scripted):
+1. RetailS, extracted under
+   `MyDrive/cctv-shoplifting-detection/data/retails/`.
+2. The MotionBERT checkpoint, uploaded to
+   `MyDrive/cctv-shoplifting-detection/motionbert_checkpoint/best_epoch.bin`.
+
+**Honesty note on this notebook specifically**: every cell was written
+to call exactly the same, already-locally-verified `scripts/`/`src/`
+code this README documents throughout, and its Python logic (the
+Drive-symlink helper, the results-table/false-positive-image/per-camera
+display cells) was tested directly against this project's real local
+outputs before being placed in the notebook. It has **not** been run
+start-to-finish inside an actual Colab session with a fresh Drive and
+runtime, since that requires a Google account and Colab access this
+development environment doesn't have - that is stated here plainly
+rather than claimed. If a top-to-bottom Colab run surfaces an issue,
+please report it.
 
 ## Dataset
 
@@ -391,27 +504,38 @@ closely (1,534 vs. 1,933). This project treats the raw `.npy` files in
 the archive we actually downloaded as authoritative, since that's the
 real data being used, not the summary table.
 
-### External video package (UCF-Crime, secondary/validation)
+### External video package (UCF-Crime) - demo and external validation ONLY, not a benchmark
 
-`data/external_video/` is the provided `Shoplifting_Video_Project_Package`,
-merged in as-is (its own `README.md` is preserved unmodified at
-`data/external_video/README.md`). It documents:
+**The actual UCF-Crime video files are not included in this repo**, per
+`data/external_video/README.md`'s own licensing note (carried over
+unmodified from the provided `Shoplifting_Video_Project_Package`).
+Before running `scripts/extract_frames.py` or `scripts/run_demo.py`:
 
-- Source: [UCF-Crime](https://www.crcv.ucf.edu/research/real-world-anomaly-detection-in-surveillance-videos/)
-  real-world anomaly detection dataset (official download, or a
-  [Kaggle mirror](https://www.kaggle.com/datasets/minhajuddinmeraj/anomalydetectiondatasetucf)).
-- UCF-Crime videos are **not redistributed in this repo** - they're a
-  third-party research dataset; download from the official/provider
-  source and follow their license terms.
-- `scripts/extract_frames.py` (adapted into this project's layout, see
-  "Setup" above) extracts a configurable number of frames per class for
-  use as external validation input once the step 3/4 pipeline exists.
+1. Download clips from the official
+   [UCF-Crime page](https://www.crcv.ucf.edu/research/real-world-anomaly-detection-in-surveillance-videos/)
+   or the [Kaggle mirror](https://www.kaggle.com/datasets/minhajuddinmeraj/anomalydetectiondatasetucf)
+   it links.
+2. Place shoplifting clips in `data/external_video/videos/shoplifting/`
+   and normal clips in `data/external_video/videos/normal/` (both
+   gitignored - see `data/external_video/README.md` for the exact
+   source links and license terms; UCF-Crime is a third-party dataset
+   and is not redistributed here).
 
-No UCF-Crime videos have been added yet as of this step - both video
-folders are currently empty, which `extract_frames.py` handles by
-printing a clear message rather than failing (verified above).
+**This path is explicitly for external validation and demo purposes
+only - it is not a benchmark, and its results should not be confused
+with the RetailS results in "Results" above (steps 2-4).** There is no
+ground-truth per-frame/per-window label pipeline wired up for
+UCF-Crime in this repo (unlike RetailS's `gt/test_frame_mask/`), so
+there is no precision/recall/ROC-AUC table for it - `scripts/run_demo.py`
+produces a qualitative, annotated output video, not a metric. See
+"Limitations" below for what this path can and can't support.
 
-## Features / capabilities (as of step 4)
+With no videos added yet, `scripts/extract_frames.py` handles both
+empty video folders by printing a clear message rather than failing
+(verified); `scripts/run_demo.py` requires an actual video path and
+exits with a clear error (also pointing here) if it isn't found.
+
+## Features / capabilities
 
 - **RetailS loader** (`src/data/retails.py`): discovers the dataset root
   at runtime, parses both the train and test filename conventions,
@@ -509,10 +633,25 @@ printing a clear message rather than failing (verified above).
   statistics, real label balance, and a before/after normalization
   skeleton plot - everything in the "Dataset" section above came from
   running this script.
+- **Raw-video demo** (`scripts/run_demo.py`, `src/demo/video_pose.py`,
+  `src/demo/render.py`): the full pipeline applied to an actual video
+  file - pretrained YOLO Pose + ByteTrack for detection/pose/tracking
+  (confirmed same COCO-17 keypoint order as RetailS, no reindexing
+  needed), this project's own preprocessing, the frozen MotionBERT lift,
+  3D motion/geometry features, and a trained BiGRU/BiGRU-attention
+  checkpoint for scoring - rendered back out as an annotated video with
+  a per-track running anomaly label. Nothing in this path is trained
+  from scratch. External-validation/demo only - see "Limitations".
+- **Colab notebook** (`notebooks/CCTV_Shoplifting_Colab.ipynb`): mounts
+  Drive, clones the repo, installs requirements, and calls the same
+  `src/`/`scripts/` code as the local setup - no logic is reimplemented
+  inline (see "Colab setup").
 
-Not yet implemented: the demo script and the Colab notebook (step 5).
+Everything in the 5-step plan is now implemented.
 
 ## Results
+
+### Experiments A and B (2D pose)
 
 All experiments: BiGRU sequence autoencoder, one-class (trained on
 `RetailS_train` only, which has zero anomaly labels by design), decision
@@ -835,7 +974,43 @@ viewpoint sensitivity, which is itself a useful, reportable finding
 for the research question, even though it cuts against the spec's
 hypothesis.
 
-## Limitations (known as of step 4)
+## Limitations
+
+- **This is an anomaly detector that flags sequences for human review,
+  not proof that a theft occurred.** A high reconstruction-error score
+  means a pose sequence looked statistically unlike the normal training
+  distribution - it does not mean shoplifting was observed, and it has
+  not been validated against any ground-truth definition of "shoplifting"
+  beyond RetailS's own binary normal/anomaly labels. Every number in
+  "Results" above should be read with that scope, not as a theft
+  classifier's accuracy.
+- **Results are from a single retail environment's six cameras
+  (RetailS)** and may not generalize to other stores, camera placements,
+  lighting conditions, or populations. The per-camera analysis above
+  already shows meaningful performance variation *within this one
+  store* - generalizing further, to different stores entirely, has not
+  been attempted or tested.
+- **The UCF-Crime demo (`scripts/run_demo.py`) is for illustration, not
+  a validated benchmark.** It runs the full pipeline on raw video and
+  produces a qualitative annotated output - it is not scored against
+  any ground truth, has no precision/recall/ROC-AUC, and should not be
+  read as evidence this system works on UCF-Crime's distribution of
+  cameras/scenes/behaviors. Its purpose is to show the pipeline running
+  end to end on footage outside RetailS, not to measure accuracy there.
+- `scripts/run_demo.py` was verified mechanically (a real YOLO Pose
+  detection, held static across looped frames, to confirm detection ->
+  tracking -> preprocessing -> MotionBERT lift -> scoring -> rendering
+  runs without crashing) but **not on actual UCF-Crime footage**, since
+  none has been added to this repo yet (see "Dataset" above) - stated
+  plainly rather than assumed to work.
+- `notebooks/CCTV_Shoplifting_Colab.ipynb`'s Python logic (the
+  Drive-symlink helper, the results-table/image-display/per-camera
+  cells) was tested against this project's real local outputs, and
+  every CLI flag it calls was cross-checked against the actual
+  scripts, but the notebook has **not been executed start-to-finish
+  inside a real Colab session** with a fresh Drive/runtime - that
+  requires Colab access this development environment doesn't have.
+  See "Colab setup" above for the same note in context.
 
 - RetailS's train subset has zero anomaly labels; the one-class
   training approach used throughout (A-E) accounts for that (it's not a

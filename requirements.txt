@@ -6,6 +6,8 @@ tqdm
 torch
 opencv-python
 scikit-learn
+ultralytics  # scripts/run_demo.py - pretrained YOLO Pose + built-in ByteTrack
+lap          # ByteTrack's data-association step - confirmed required at runtime, not auto-installed here
 
 # MotionBERT (src/motionbert/lift.py, third_party/MotionBERT/) needs no
 # extra packages beyond the above - confirmed by reading its actual
