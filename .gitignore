@@ -46,7 +46,7 @@ data/external_video/frames/shoplifting/*
 data/external_video/frames/normal/*
 !data/external_video/frames/normal/.gitkeep
 
-# Outputs: checkpoints, logs, plots, demo videos (never commit, keep structure)
+# Outputs: checkpoints, logs, plots, rendered videos (never commit, keep structure)
 outputs/*
 !outputs/.gitkeep
 !outputs/checkpoints/

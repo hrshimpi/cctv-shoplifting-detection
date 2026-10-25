@@ -31,6 +31,7 @@ Saves, under outputs/:
 
 import argparse
 import csv
+import json
 import sys
 import time
 from pathlib import Path
@@ -47,6 +48,7 @@ from src.experiments.dataset import build_windows_for_subset, build_windows_for_
 from src.features.motion_features import feature_dim, feature_dim_3d  # noqa: E402
 from src.models.bigru_attention import BiGRUAttentionAutoencoder  # noqa: E402
 from src.models.bigru_autoencoder import BiGRUAutoencoder  # noqa: E402
+from src.experiments.splits import split_by_video  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data" / "retails"
@@ -96,7 +98,7 @@ def main() -> None:
         from src.motionbert.lift import load_motionbert
 
         model_3d = load_motionbert(checkpoint_path)
-        features, labels = build_windows_for_subset_3d(
+        features, labels, metadata = build_windows_for_subset_3d(
             root,
             "train",
             cfg,
@@ -107,9 +109,10 @@ def main() -> None:
             use_angles=cfg["use_angles"],
             max_pose_files=cfg["max_train_pose_files"],
             seed=cfg["seed"],
+            return_metadata=True,
         )
     else:
-        features, labels = build_windows_for_subset(
+        features, labels, metadata = build_windows_for_subset(
             root,
             "train",
             cfg,
@@ -117,6 +120,7 @@ def main() -> None:
             use_acceleration=cfg["use_acceleration"],
             max_pose_files=cfg["max_train_pose_files"],
             seed=cfg["seed"],
+            return_metadata=True,
         )
     print(
         f"Built {len(features)} training windows in {time.time() - t0:.1f}s "
@@ -124,11 +128,12 @@ def main() -> None:
     )
     assert (labels == 0).all(), "RetailS_train unexpectedly has non-zero labels - investigate before trusting this run"
 
-    n = len(features)
-    rng = np.random.default_rng(cfg["seed"])
-    perm = rng.permutation(n)
-    n_val = int(n * cfg["val_fraction"])
-    val_idx, train_idx = perm[:n_val], perm[n_val:]
+    if not len(features) or not np.isfinite(features).all():
+        raise ValueError("Training requires nonempty, finite feature windows")
+    train_idx, val_idx, split_report = split_by_video(metadata, cfg["val_fraction"], cfg["seed"])
+    print(f"Source-video split: {len(split_report['train_groups'])} training groups, "
+          f"{len(split_report['validation_groups'])} validation groups; "
+          f"{len(train_idx)} train / {len(val_idx)} validation windows")
 
     train_loader = DataLoader(TensorDataset(torch.from_numpy(features[train_idx])), batch_size=cfg["batch_size"], shuffle=True)
     val_loader = DataLoader(TensorDataset(torch.from_numpy(features[val_idx])), batch_size=cfg["batch_size"], shuffle=False)
@@ -151,6 +156,7 @@ def main() -> None:
     log_dir = OUTPUTS_DIR / "logs" / cfg["experiment_name"]
     out_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
+    (log_dir / "split_manifest.json").write_text(json.dumps(split_report, indent=2), encoding="utf-8")
 
     log_rows = []
     train_start = time.time()
@@ -182,7 +188,7 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(log_rows)
 
-    torch.save({"model_state_dict": model.state_dict(), "config": cfg}, out_dir / "model.pt")
+    torch.save({"model_state_dict": model.state_dict(), "config": cfg, "split": split_report}, out_dir / "model.pt")
 
     # Reconstruction error over ALL normal training windows (train+val
     # together) - evaluate.py uses this to set the decision threshold, so

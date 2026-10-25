@@ -1,0 +1,6 @@
+# Local notebook tools. Install project requirements.txt first.
+notebook>=7,<8
+ipykernel>=6,<8
+nbclient>=0.10,<1
+nbconvert>=7,<8
+imageio-ffmpeg>=0.6,<1

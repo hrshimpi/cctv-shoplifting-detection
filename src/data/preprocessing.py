@@ -181,7 +181,10 @@ def preprocess_track(
 
     mask = visibility_mask(keypoints, confidence_threshold)
     keypoints, still_missing = interpolate_short_gaps(frame_ids, keypoints, mask, max_interpolation_gap)
-    keypoints = smooth(keypoints, smoothing_window)
+    # Adjacent array rows can be far apart in video time. Never let a
+    # smoothing kernel mix poses from separate contiguous track segments.
+    for start, end in _contiguous_runs(frame_ids):
+        keypoints[start:end] = smooth(keypoints[start:end], smoothing_window)
     if apply_normalization:
         keypoints = normalize_position(keypoints)
         keypoints = normalize_scale(keypoints)

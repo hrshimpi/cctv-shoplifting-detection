@@ -1,8 +1,8 @@
 # Experiment B: 2D pose + velocity. Identical to experiment_a.yaml in
-# every other respect - same preprocessing, same model size, same
+# every other respect - same preprocessing, same hidden width/depth, same
 # training setup, same train-file sample - so any metric difference
-# between A and B is attributable to adding velocity features, not to
-# incidental tuning differences.
+# between A and B measures the velocity-feature configuration, including
+# the larger input/output projections. One seed is not a significance test.
 
 experiment_name: experiment_b
 

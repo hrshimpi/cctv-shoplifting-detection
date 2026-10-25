@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from src.data.retails import PersonTrack, PoseFrame
@@ -27,6 +28,7 @@ def detect_and_track(
     video_path: str | Path,
     checkpoint_path: str | Path = DEFAULT_YOLO_CHECKPOINT,
     conf_threshold: float = 0.3,
+    img_size: int = 640,
 ) -> tuple[dict[int, PersonTrack], float, tuple[int, int]]:
     """Runs YOLO Pose + ByteTrack over every frame of video_path, grouping
     detections by ByteTrack's persistent track id into PersonTrack
@@ -40,29 +42,33 @@ def detect_and_track(
     scripts/run_demo.py to open a matching VideoWriter for the
     annotated output.
     """
+    video_path = Path(video_path)
+    if not video_path.is_file():
+        raise FileNotFoundError(video_path)
+    cap = cv2.VideoCapture(str(video_path))
+    opened = cap.isOpened()
+    fps = float(cap.get(cv2.CAP_PROP_FPS))
+    frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    cap.release()
+    if not opened or not np.isfinite(fps) or fps <= 0 or min(frame_size) <= 0:
+        raise ValueError(f"Cannot read video dimensions/FPS: {video_path}")
+
     from ultralytics import YOLO  # imported lazily - heavy, optional dependency only the demo needs
 
     model = YOLO(str(checkpoint_path))
     tracks: dict[int, PersonTrack] = {}
 
-    video_path = Path(video_path)
     results_stream = model.track(
-        source=str(video_path), persist=True, tracker="bytetrack.yaml", conf=conf_threshold, verbose=False, stream=True
+        source=str(video_path), persist=True, tracker="bytetrack.yaml", conf=conf_threshold,
+        imgsz=img_size, verbose=False, stream=True
     )
 
-    fps = None
-    frame_size = None
     for frame_idx, result in enumerate(results_stream):
-        if fps is None:
-            fps = result.speed.get("fps") or 25.0  # fallback if ultralytics doesn't report it
-            h, w = result.orig_shape
-            frame_size = (w, h)
-
         if result.boxes is None or result.boxes.id is None or result.keypoints is None:
             continue  # no tracked detections this frame
 
         track_ids = result.boxes.id.int().tolist()
-        keypoints = result.keypoints.data.numpy()  # (N, 17, 3) - x, y, confidence
+        keypoints = result.keypoints.data.cpu().numpy()  # (N, 17, 3) - x, y, confidence
 
         for track_id, kpts in zip(track_ids, keypoints):
             if track_id not in tracks:
@@ -76,4 +82,4 @@ def detect_and_track(
                 )
             tracks[track_id].frames[frame_idx] = PoseFrame(frame_id=frame_idx, keypoints=kpts.astype(np.float32), scores=None)
 
-    return tracks, float(fps or 25.0), frame_size or (0, 0)
+    return tracks, fps, frame_size

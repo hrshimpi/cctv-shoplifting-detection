@@ -1,0 +1,13 @@
+# Development candidates based on sampled overlay review, not a benchmark.
+# Preserve the uniform nano/conf=0.5 baseline in outputs/external_sequences/conf05.
+videos:
+  Shoplifting017_x264.mp4:
+    checkpoint: third_party/yolo/yolov8s-pose.pt
+    detection_confidence: 0.15
+    img_size: 640
+    pose_dir: outputs/tracking_review/small_conf015_640/Shoplifting017_x264
+  Shoplifting031_x264.mp4:
+    checkpoint: third_party/yolo/yolov8s-pose.pt
+    detection_confidence: 0.15
+    img_size: 640
+    pose_dir: outputs/tracking_review/small_conf015_640/Shoplifting031_x264

@@ -31,7 +31,6 @@ from src.data.retails import (
     load_pose_file,
 )
 from src.features.motion_features import build_feature_vector, build_feature_vector_3d
-from src.motionbert.lift import lift_2d_to_3d_batch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LIFT_CACHE_DIR = PROJECT_ROOT / "outputs" / "cache" / "motionbert_lift"
@@ -91,6 +90,8 @@ def _collect_windows(
 
     for pose_path in tqdm(pose_files, desc=desc):
         label_path = label_path_for_pose_file(pose_path, gt_dir)
+        if subset_key != "train" and (label_path is None or not label_path.is_file()):
+            raise FileNotFoundError(f"Missing test ground truth for {pose_path}; refusing to assume normal labels")
         video_labels = load_anomaly_labels(label_path)
 
         for track in load_pose_file(pose_path):
@@ -258,6 +259,9 @@ def lifted_windows_for_subset(
         empty = np.empty((0, preprocessing_cfg["window_length"], 17, 3), dtype=np.float32)
         labels = np.empty((0,), dtype=np.int64)
         return (empty, labels, window_meta) if return_metadata else (empty, labels)
+
+    # A/B must work before the optional MotionBERT code is installed.
+    from src.motionbert.lift import lift_2d_to_3d_batch
 
     lifted_all = []
     for start in tqdm(range(0, len(window_keypoints), lift_batch_size), desc=f"Lifting 2D->3D ({subset_key})"):

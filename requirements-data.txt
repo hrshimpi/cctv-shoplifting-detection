@@ -1,0 +1,2 @@
+# Optional downloader for the public link in the official RetailS repository.
+gdown>=6,<7
