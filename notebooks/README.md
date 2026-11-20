@@ -1,6 +1,15 @@
 # Retail shoplifting model development
 
-Use `Retail_Shoplifting_Model_Development.ipynb` for local development and validation. `CCTV_Shoplifting_Colab.ipynb` provides the separate Colab workflow.
+Use `Retail_Shoplifting_Model_Development.ipynb` for local development and validation.
+
+For the prepared expanded training cohort, use `Retail_Shoplifting_GPU_Training.ipynb` and [COLAB_TRAINING.md](../COLAB_TRAINING.md). It trains three seeds on a GPU, saves resumable checkpoints to Drive and exports results for local validation. `CCTV_Shoplifting_Colab.ipynb` is an older workflow.
+
+For the follow-up with joint motion, use `Retail_Shoplifting_GPU_Training_B.ipynb` and [COLAB_EXPERIMENT_B.md](../COLAB_EXPERIMENT_B.md). Its separate ZIP and Drive output directory preserve A; B uses the identical cohort and split with 58 input features.
+
+Section 10g shows the pose/label alignment audit and pending human observations.
+Use [VALIDATION_REVIEW.md](../VALIDATION_REVIEW.md) for the local retail-video
+review page and annotation export. These existing clips are a pilot, not a new
+independent test set.
 
 ## Run the notebook
 
@@ -62,3 +71,12 @@ Success prints `PASS` and the number of code cells executed without errors. Arti
 - `Retail_Shoplifting_Model_Development.html`, when exported from the executed notebook
 
 Keep source notebooks free of saved outputs. Datasets, trained weights, rendered videos and feature tensors remain ignored by Git. Shared processing belongs in the existing Python modules rather than a second notebook-only implementation.
+
+## Quality-corrected research workflow
+
+Sections 10d-10f cover the input audit, explicit RetailS coordinate interpretation,
+frozen 3D validation, matched A-E experiments, expanded three-seed validation and
+all seven offline inference videos. See `MODEL_DEVELOPMENT.md` for stage commands.
+The original A/B measurements in 10b-10c remain reference results. New metrics
+come from `outputs/logs/research_v1/final_report.json`; they are never fabricated
+or inferred from a successful script execution.

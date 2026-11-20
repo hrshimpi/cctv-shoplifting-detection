@@ -2,42 +2,24 @@
 
 Course project for CSE 6367. Team: Harsha Prasad, Himanshu Shimpi.
 
-Current local validation includes retail-video pose/feature exports and
-matched 2D Experiments A/B. Use the model-development notebook and checklist
-for current measured results. MotionBERT and Experiments C–E still require
-local setup and validation; the historical results are a separate record.
+For GPU training with the prepared RetailS cohort, follow
+[COLAB_TRAINING.md](COLAB_TRAINING.md) and open
+[`notebooks/Retail_Shoplifting_GPU_Training.ipynb`](notebooks/Retail_Shoplifting_GPU_Training.ipynb).
+The handoff ZIP and returned model artifacts stay under git-ignored `outputs/`.
 
-For current local setup checks, pose-extraction commands, and stage-by-stage
-acceptance checks, see [DEVELOPMENT_CHECKLIST.md](DEVELOPMENT_CHECKLIST.md).
-Historical results below do not imply their data and checkpoints are present
-in a fresh checkout.
+The current quality-corrected workflow is documented in
+[MODEL_DEVELOPMENT.md](MODEL_DEVELOPMENT.md). It covers the input audit,
+visibility-aware preprocessing/loss, frozen MotionBERT validation, matched A-E
+experiments, expanded three-seed validation and offline external-video scoring.
 
-For the model-development workflow, open
-[`notebooks/Retail_Shoplifting_Model_Development.ipynb`](notebooks/Retail_Shoplifting_Model_Development.ipynb).
-Launch and verification instructions are in [`notebooks/README.md`](notebooks/README.md).
+Open [`notebooks/Retail_Shoplifting_Model_Development.ipynb`](notebooks/Retail_Shoplifting_Model_Development.ipynb).
+Sections 10b-10c preserve the original A/B reference measurements; sections
+10d-10f inspect the new pipeline. Measured artifacts are under
+`outputs/logs/research_v1/` and `outputs/video_inference/`, ignored by Git.
 
-### Current 2D measurements
-
-Both models trained for 15 epochs on 50 sampled normal pose files, using the
-same source-video split (18,459 training / 4,034 validation windows). Evaluation
-covers both complete RetailS test subsets: 2,120 windows, including 1,999 with
-anomaly-mask overlap and 121 normal windows.
-
-| Experiment | Precision | Recall | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|
-| A | 0.9752 | 0.0590 | 0.1113 | 0.5413 |
-| B | 0.9636 | 0.0530 | 0.1005 | 0.5284 |
-
-Velocity features did not improve the combined result in this run. Both models
-miss most anomalous windows at their normal-only p95 thresholds. High precision
-and average precision must be interpreted alongside the 94.3% anomaly prevalence.
-These are one-seed, sampled-training results with video-mask window labels,
-not person-specific theft detection or deployment validation.
-
-Inspect notebook section **10c** or `outputs/logs/ab_comparison/comparison.md`.
-The comparison verifies matching splits, windows and labels, and exports all
-source-linked predictions, camera errors, score distributions and skeleton strips.
-No test labels select a threshold or checkpoint.
+Use [notebooks/README.md](notebooks/README.md) for launch instructions. The
+legacy commands and historical results below remain a separate implementation
+record; they must not be combined with the versioned research results.
 
 ## Overview
 
@@ -67,15 +49,15 @@ classifier can. "Results" below reports what was actually found -
 including where it complicates this hypothesis (e.g. the per-camera
 viewpoint-sensitivity finding).
 
-## Current local status
+## Current workflow
 
-- RetailS data is downloaded and verified: 942 training pose files and 671 test pose/mask pairs.
-- Seven retail videos have verified pose and temporal-feature exports; overhead-camera profiles remain subject to identity review.
-- Experiments A and B use 50 sampled normal pose files, disjoint source-video validation groups, and the full labeled test subsets.
-- The model-development notebook inspects measured learning curves, matched A/B evaluation and source-linked errors.
-- MotionBERT assets and local 3D experiment checkpoints are still required before validating Experiments C–E and complete raw-video anomaly scoring.
-
-The later **Historical results** section preserves the earlier experiment record. It does not describe the current local checkpoints; use the notebook, development checklist and `outputs/logs/ab_comparison/` for current measurements.
+- RetailS and seven external retail videos are available locally; source data and weights are excluded from Git.
+- The original A/B checkpoints remain preserved for reference.
+- The quality audit identifies unsupported normalization anchors and extreme-coordinate windows in the original pipeline.
+- The versioned pipeline makes the RetailS coordinate interpretation explicit and uses supported joints for smoothing and reconstruction loss.
+- MotionBERT source and the author's H36M-finetuned checkpoint are downloaded with recorded revisions and SHA-256 verification.
+- Matched A-E runs share data and splits; expanded A uses 100 training pose files and three seeds.
+- Full-stage verification requires eight model evaluations, seven decoded output videos and the notebook checks. Read the generated final report for completion and measured metrics.
 
 ## Repository structure
 
@@ -263,68 +245,30 @@ on the *full*, unsampled test subsets - only training is subsampled.
 
 ### MotionBERT setup
 
-MotionBERT is used as a frozen, pretrained 2D->3D pose lifter - it is
-never fine-tuned or otherwise modified by this project. Getting it
-working locally (and in Colab) is two separate steps: cloning the code,
-and manually downloading a pretrained checkpoint (the checkpoint cannot
-be downloaded by a script - see below).
+The official README links the author's Hugging Face repository, which provides
+an automated alternative to the OneDrive links. The compatible checkpoint is
+`checkpoint/pose3d/FT_MB_release_MB_ft_h36m/best_epoch.bin`; pretraining
+checkpoints that output representations are not interchangeable with it.
 
-1. **Clone the official repo** into `third_party/` (gitignored - this is
-   a dependency fetched at setup time, not vendored into this repo):
+```powershell
+git clone --depth 1 https://github.com/Walter0807/MotionBERT.git third_party/MotionBERT
+.\.venv\Scripts\python.exe scripts/prepare_motionbert.py
+.\.venv\Scripts\python.exe scripts/validate_research_inputs.py
+```
 
-   ```bash
-   git clone --depth 1 https://github.com/Walter0807/MotionBERT.git third_party/MotionBERT
-   ```
+Skip cloning if `third_party/MotionBERT` already exists. The downloader pins
+the author's model revision, verifies the LFS SHA-256 and byte count, and saves
+the source commit and provenance to `outputs/logs/motionbert_setup.json`.
+The default local checkpoint is
+`third_party/MotionBERT/checkpoint/pose3d/MB_ft_h36m/best_epoch.bin`.
 
-   `src/motionbert/lift.py` adds `third_party/MotionBERT` to `sys.path`
-   at import time and imports `lib.model.DSTformer.DSTformer` directly -
-   it does not go through MotionBERT's own CLI/config (`infer_wild.py`,
-   `easydict`-based YAML configs), since this project already has clean
-   `(T, 17, 3)` pose tensors from `src/data/preprocessing.py` and doesn't
-   need their video/AlphaPose-JSON loading pipeline.
-
-2. **Download a pretrained pose3d checkpoint.** MotionBERT's Model Zoo
-   ships several checkpoints; the general-purpose "MotionBERT"/
-   "MotionBERT-Lite" pretrain checkpoints output 512-dim reanalysiss,
-   **not** 3D coordinates, and are the wrong ones for this project. The
-   right ones are the two H36M pose3d checkpoints (confirmed against
-   `third_party/MotionBERT/README.md`'s own Model Zoo table):
-
-   | Checkpoint | MPJPE | Config it matches | OneDrive link |
-   |---|---|---|---|
-   | 3D Pose (H36M-SH, ft) - **used here** | 37.2mm | `configs/pose3d/MB_ft_h36m.yaml` | https://1drv.ms/f/s!AvAdh0LSjEOlgSoTqtyR5Zsgi8_Z?e=rn4VJf |
-   | 3D Pose (H36M-SH, scratch) | 39.2mm | `configs/pose3d/MB_train_h36m.yaml` | https://1drv.ms/f/s!AvAdh0LSjEOlgSvNejMQ0OHxMGZC?e=KcwBk1 |
-
-   This is a **manual download** - the link is a OneDrive folder, and
-   the folder (confirmed by testing it directly) returns 403 Forbidden
-   to non-browser requests, so it cannot be scripted the way the RetailS
-   Google Drive archive is. Open the "ft" link above in a browser,
-   download the single checkpoint file inside (named `best_epoch.bin` in
-   MotionBERT's own examples), and place it at:
-
-   ```
-   third_party/MotionBERT/checkpoint/pose3d/MB_ft_h36m/best_epoch.bin
-   ```
-
-   (`mkdir -p third_party/MotionBERT/checkpoint/pose3d/MB_ft_h36m` first
-   if the folders don't exist yet.) This is the default path
-   `scripts/validate_joint_mapping.py` (and, once Experiments C/D exist,
-   `scripts/train.py`) look for; override it with `--checkpoint <path>`
-   if it's placed somewhere else. Do this once per machine (local and
-   Colab both need their own copy - Colab setup below covers
-   mounting/uploading it there).
-
-3. **Verify the setup**:
-
-   ```bash
-   python scripts/validate_joint_mapping.py
-   ```
-
-   Without a checkpoint in place, this still renders the COCO-17 vs.
-   H36M-17 joint-reindexing comparison (see "Features / capabilities"
-   below) and prints an explicit message that the 3D-lift panel is being
-   skipped - it does not fail or fake that panel. With a checkpoint in
-   place, it additionally runs the real 2D->3D lift and renders it.
+Validation checks explicit input orientation, direct joint mapping, parity with
+the official crop/scale utility, frozen parameters, finite output and zero-root
+coordinates. Review all six camera previews under
+`outputs/plots/research_input_validation/`. This does not measure 3D accuracy:
+RetailS provides no corresponding 3D ground truth, and COCO-to-H36M derived
+joints remain approximations. See `MODEL_DEVELOPMENT.md` for the coordinate
+interpretation and remaining scientific limitations.
 
 ### Running the raw-video inference workflow
 
@@ -996,7 +940,7 @@ camera 5 the best for **both** experiments, which suggests whatever
 makes a camera easy or hard here (viewing angle, occlusion, lighting,
 crowd density) is a property of the camera/scene itself, not something
 3D pose estimation corrects for - the same cameras stay hard regardless
-of which reanalysis the anomaly detector sees.
+of which representation the anomaly detector sees.
 
 Caveat worth stating plainly: A and D aren't on fully equal footing
 either (D's underlying model was trained on 10 sampled files vs. A's

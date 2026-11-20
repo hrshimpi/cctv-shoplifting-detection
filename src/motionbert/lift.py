@@ -107,8 +107,9 @@ def crop_scale(motion_h36m: np.ndarray) -> np.ndarray:
     xs, ys = (xmin + xmax - scale) / 2, (ymin + ymax - scale) / 2
     motion[..., :2] = (motion[..., :2] - np.array([xs, ys])) / scale
     motion[..., :2] = (motion[..., :2] - 0.5) * 2
-    motion[..., :2] = np.clip(motion[..., :2], -1, 1)
-    return motion
+    # The official utility clips all channels, including HRNet confidence
+    # scores that can slightly exceed one.
+    return np.clip(motion, -1, 1)
 
 
 def lift_2d_to_3d(model: nn.Module, keypoints_coco17: np.ndarray) -> np.ndarray:

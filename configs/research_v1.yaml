@@ -1,0 +1,28 @@
+# New runs preserve all legacy checkpoints and caches.
+version: quality_v1
+# RetailS first coordinate follows body height in all six sampled cameras.
+# Explicit dataset-specific correction; YOLO video inputs use xy separately.
+coordinate_order: yx
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+window_length: 30
+stride: 15
+max_normalized_coordinate: 10
+min_visible_fraction: 0.5
+sample_seed: 0
+split_seed: 0
+val_fraction: 0.1
+matched_train_files: 10
+expanded_train_files: 100
+expanded_seeds: [0, 1, 2]
+epochs: 15
+batch_size: 32
+lift_threads: 8
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+learning_rate: 0.001
+threshold_percentile: 95
+# Full test subsets; no sampling for A-E.
+max_eval_pose_files: null

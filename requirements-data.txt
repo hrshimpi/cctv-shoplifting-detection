@@ -1,2 +1,3 @@
 # Optional downloader for the public link in the official RetailS repository.
 gdown>=6,<7
+requests>=2.31,<3

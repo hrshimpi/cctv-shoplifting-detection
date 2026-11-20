@@ -103,9 +103,9 @@ def coco17_to_h36m17(keypoints: np.ndarray) -> np.ndarray:
     keypoints: (..., 17, C), C in {2, 3} (xy, or xy+confidence), COCO-17
     joint order.
 
-    Returns (..., 17, C) in H36M-17 order. Derived joints' confidence
-    (when C == 3) is the mean of the COCO-17 joints they're computed
-    from, so a derived joint is only as trustworthy as its inputs.
+    Returns (..., 17, C) in H36M-17 order. Derived confidence is the
+    minimum of contributing confidences: a missing endpoint cannot create
+    an apparently supported synthetic joint.
     """
     if keypoints.shape[-2] != 17:
         raise ValueError(f"Expected 17 joints, got shape {keypoints.shape}")
@@ -125,6 +125,11 @@ def coco17_to_h36m17(keypoints: np.ndarray) -> np.ndarray:
     thorax = (left_shoulder + right_shoulder) / 2.0
     spine = (pelvis + thorax) / 2.0
     head = (left_eye + right_eye) / 2.0
+    if keypoints.shape[-1] == 3:
+        pelvis[..., 2] = np.minimum(left_hip[..., 2], right_hip[..., 2])
+        thorax[..., 2] = np.minimum(left_shoulder[..., 2], right_shoulder[..., 2])
+        spine[..., 2] = np.minimum(pelvis[..., 2], thorax[..., 2])
+        head[..., 2] = np.minimum(left_eye[..., 2], right_eye[..., 2])
 
     out[..., H36M17["pelvis"], :] = pelvis
     out[..., H36M17["thorax"], :] = thorax

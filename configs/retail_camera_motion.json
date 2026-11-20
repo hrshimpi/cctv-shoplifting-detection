@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "manifest_id": "b1dd2c5ab254f5aaeb5ca57c7427248c586eeaa36fdd210ce538c939d7d8dc51",
+  "scope": "External review clips only; engineering exclusions, not action labels",
+  "method": "AI visual review of dense frames around verified zoom/pan; conservative inclusive bounds",
+  "cases": {
+    "RV002": {"excluded_intervals": [[415, 449]], "reason": "Digital zoom changes apparent pose scale and scene crop; inspected frames 390 to 465"},
+    "RV007": {"excluded_intervals": [[406, 449]], "reason": "Camera pans between store views; inspected frames 390 to 470"}
+  }
+}

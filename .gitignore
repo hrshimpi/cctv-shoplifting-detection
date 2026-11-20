@@ -37,6 +37,9 @@ kaggle.json
 data/retails/*
 !data/retails/.gitkeep
 
+# Downloaded action-label candidates, RGB clips and upstream metadata
+data/action_sources/
+
 data/external_video/videos/shoplifting/*
 !data/external_video/videos/shoplifting/.gitkeep
 data/external_video/videos/normal/*

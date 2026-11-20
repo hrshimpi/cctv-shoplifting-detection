@@ -1,5 +1,7 @@
 # Development checkpoints and how to verify them
 
+The current versioned workflow is in [MODEL_DEVELOPMENT.md](MODEL_DEVELOPMENT.md). Sections 1-4 below retain the original input and A/B reference checkpoints. Use the versioned workflow for the corrected research experiments.
+
 Run commands in PowerShell from the repository directory. Use the existing
 Python 3.11 environment explicitly:
 
@@ -277,36 +279,44 @@ are finite, and error examples can be traced to their original pose sequences.
 Low recall or weak ROC-AUC is a measured modeling limitation, not a passing
 accuracy result. Do not choose thresholds or checkpoints using these test labels.
 
-## 5. 3D lifting
-
-Follow the README to obtain the official MotionBERT code and the compatible
-H36M pretrained pose checkpoint, then run:
+## 5. Corrected 3D input validation
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/validate_joint_mapping.py
+.\.venv\Scripts\python.exe scripts/prepare_motionbert.py
+.\.venv\Scripts\python.exe scripts/validate_research_inputs.py
 ```
 
-Pass: mapping and lifted skeleton previews are plausible; outputs are finite
-and joint ordering matches the model. Inspect left/right limbs and coordinate
-normalization before training C/D/E. Missing checkpoints are a setup issue,
-not a successful 3D test.
+Pass: source/model provenance is saved; joint mappings and official normalization
+agree; output is finite/root-relative; all six camera previews are reviewed.
+The RetailS axis interpretation is explicit and different from YOLO's native xy.
+Visual plausibility does not establish 3D accuracy without ground truth.
 
-## 6. 3D experiments and video inference
-
-Train/evaluate C, D and E through the existing `--experiment` options. Compare
-them with A/B using comparable splits and report differences in sample sizes.
-Once the matching checkpoints exist:
+## 6. Matched experiments and expanded validation
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/run_demo.py --video data/external_video/videos/shoplifting/Shoplifting033_x264.mp4
+.\.venv\Scripts\python.exe scripts/run_research_phase.py --stage matched
+.\.venv\Scripts\python.exe scripts/run_research_phase.py --stage expanded
 ```
 
-Pass: video inference loads real weights, scores completed windows and produces
-a playable annotated video with correct timing. Repeat on Normal footage;
-inspect false alarms and missed events. The seven UCF-Crime videos support
-an external inspection, not a robust benchmark. Video-level labels do not
-locate the exact theft interval; temporal evaluation needs event annotations.
+Pass: A-E use identical retained test windows and source-video splits; all runs
+save real training curves, selected epochs and validation-only normal thresholds.
+Expanded A uses 100 pose files and three seeds. Test labels do not select models,
+thresholds or epochs. Rejected test windows remain counted and unscored.
 
-Finish with reproducible commands, actual metrics, plots, failure examples,
-limitations and the model-development report. Mark milestones complete
-only after their checks pass and preserve generated summaries for evidence.
+## 7. External-video inference and reproducibility
+
+```powershell
+.\.venv\Scripts\python.exe scripts/run_video_inference.py
+.\.venv\Scripts\python.exe scripts/summarize_research_phase.py
+.\.venv\Scripts\python.exe scripts/run_model_notebook.py
+```
+
+Pass: all seven annotated videos decode completely with matching frame counts
+and FPS. Scores expire after a stride and cannot cross tracking gaps. The summary
+requires all eight model runs and verifies their hashes, split/window identities
+and labels. The notebook executes from a fresh kernel with no errors.
+
+Inspect `outputs/logs/research_v1/results.md` and the model-development notebook.
+Report conditional metrics, candidate-window recall, class balance, seed variation
+and scientific limitations. These offline scores do not establish person-specific
+theft localization or unseen-store deployment readiness.
