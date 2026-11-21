@@ -2,6 +2,24 @@
 
 Course project for CSE 6367. Team: Harsha Prasad, Himanshu Shimpi.
 
+Run the local project from the VS Code terminal with the existing environment:
+
+```powershell
+.\.venv\Scripts\python.exe run_project.py
+```
+
+The launcher verifies saved models and the frozen split, reproduces all retained
+clip predictions from cached features, rebuilds the results page, starts or
+reuses the local server, and opens the browser. It does not retrain or download
+data. Use `--check` for verification without a server or browser.
+
+The new supervised staged-clip feasibility experiment is documented in
+[MNNIT_CLIP_CLASSIFICATION.md](MNNIT_CLIP_CLASSIFICATION.md), with the cached
+inspection notebook
+[`notebooks/Retail_Shoplifting_Supervised_Clips.ipynb`](notebooks/Retail_Shoplifting_Supervised_Clips.ipynb).
+Its laboratory clip metrics are separate from the RetailS pose results below;
+they do not establish real-store action detection accuracy.
+
 For GPU training with the prepared RetailS cohort, follow
 [COLAB_TRAINING.md](COLAB_TRAINING.md) and open
 [`notebooks/Retail_Shoplifting_GPU_Training.ipynb`](notebooks/Retail_Shoplifting_GPU_Training.ipynb).

@@ -145,3 +145,11 @@ Each video includes skeletons and person IDs, visible joints, mean joint confide
 The benchmark metrics on the panel describe held-out RetailS results, not accuracy on the current video. Raw per-frame joint coordinates, confidences, model values and states are retained in `outputs/video_analysis/RVxxx/frame_values.jsonl`; model alert intervals are exported separately as CSV. These intervals are not reference theft labels.
 
 The renderer is `scripts/render_model_analysis_videos.py`. Aggregate integrity checks, video hashes, frame counts, thresholds and model provenance are recorded in `outputs/video_analysis/verification.json`. Encoded videos live under `outputs/manual_validation/media/` and remain excluded from git with all other outputs.
+
+## Readable activity videos and timelines
+
+The default results view now uses simplified 1280 x 800 activity videos. Amber means **Possible shoplifting**, green means **Normal activity predicted**, and gray means **Unable to assess**. These labels translate the existing primary A seed 0 threshold decisions; they are not new action annotations or results from the separate MNNIT clip classifier. Normal means no threshold crossing for assessed people, not proof that theft was absent. Camera movement and missing eligible windows remain unassessed.
+
+Each of the seven videos includes tracked person IDs, source time, a conclusion, assessed coverage, and a filterable one-second activity table. Play buttons seek to the first alert within a flagged row. Exact subsecond alert intervals are listed separately with exclusive end times. A row can contain both assessed and unassessed frames; its coverage column makes this explicit. Person IDs are tracker estimates and may change after tracking gaps. Original detailed videos remain available under Technical diagnostics.
+
+Generate readable media with `.venv\Scripts\python.exe scripts/prepare_readable_video_results.py`, or verify saved outputs without re-encoding using `--verify-only`. Rebuild the page with `.venv\Scripts\python.exe scripts/build_autonomous_review_report.py`. Verification compares primary scores against the original window CSV using the original parser, checkpoint hashes, frame counts, source hashes and per-frame alert totals. No weights or thresholds are changed. Outputs and CSV/JSON timelines remain under ignored `outputs/` directories.

@@ -1,0 +1,21 @@
+{
+  "task": "exploratory_staged_clip_classification",
+  "dataset_doi": "10.17632/r3yjf35hzr.1",
+  "encoder": "mobilenet_v3_small",
+  "weights": "IMAGENET1K_V1",
+  "frozen_encoder": true,
+  "sampled_frames": 16,
+  "descriptor": "mean_std_mean_absolute_consecutive_embedding_change",
+  "appearance_control": "mean_std",
+  "classifier": "standard_scaler_logistic_regression",
+  "C": 1.0,
+  "class_weight": "balanced",
+  "max_iter": 2000,
+  "probability_threshold": 0.5,
+  "seed": 2026,
+  "split": "stratified_group_5fold_first_test_then_4fold_first_validation",
+  "group": "exact_and_sampled_near_duplicate_components",
+  "actor_session_independent": false,
+  "hyperparameter_search": false,
+  "test_driven_selection": false
+}

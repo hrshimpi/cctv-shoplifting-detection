@@ -80,3 +80,16 @@ all seven offline inference videos. See `MODEL_DEVELOPMENT.md` for stage command
 The original A/B measurements in 10b-10c remain reference results. New metrics
 come from `outputs/logs/research_v1/final_report.json`; they are never fabricated
 or inferred from a successful script execution.
+
+## Supervised staged clip experiment
+
+`Retail_Shoplifting_Supervised_Clips.ipynb` inspects the downloaded MNNIT V1
+archive, duplicate-aware split, frozen MobileNetV3-small clip baseline, confusion
+counts, all test errors and portable saved-head inference. It reuses cached
+artifacts and does not retrain the encoder. Laboratory clip scores are separate
+from RetailS and do not establish person/time localization or real-store quality.
+
+Run `scripts/run_supervised_clip_notebook.py` for a fresh-kernel verification.
+Its executed notebook, HTML and `notebook_execution.json` are saved under
+`outputs/mnnit_clip_classification/`. See `MNNIT_CLIP_CLASSIFICATION.md` for source,
+attribution, fixed parameters, runtime isolation and measured limitations.
