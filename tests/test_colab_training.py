@@ -24,7 +24,7 @@ class ColabTrainingTests(unittest.TestCase):
         temporary_root = Path(__file__).resolve().parents[1] / 'outputs/test_tmp'
         temporary_root.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=temporary_root) as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()  # outputs/ may be a symlink (e.g. to Google Drive on Colab)
             (root / 'data').mkdir()
             rng = np.random.default_rng(0)
             x = rng.normal(size=(8, 3, dimension)).astype('float32')
