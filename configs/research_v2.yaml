@@ -1,0 +1,76 @@
+# research_v2: frame-level protocol, labelled dev folds, scoring/smoothing/data/window/model steps.
+# research_v1 and experiment_a-e outputs are never touched; everything goes to */research_v2/.
+version: research_v2
+
+# Pose cleaning: identical to research_v1 (configs/research_v1.yaml).
+coordinate_order: yx
+confidence_threshold: 0.3
+max_interpolation_gap: 5
+smoothing_window: 3
+max_normalized_coordinate: 10
+min_visible_fraction: 0.5
+sample_seed: 0
+
+# Normal-only train/validation split (grouped by camera+video), as in research_v1.
+split_seed: 0
+val_fraction: 0.1
+threshold_percentile: 95       # p95 of NORMAL validation frame scores
+
+# Step 0: two dev folds over the test videos (choose on one fold, report on the other, swap).
+fold_seed: 0
+seeds: [0, 1, 2]
+bootstrap_draws: 1000          # video-grouped bootstrap for 95% CIs
+bootstrap_seed: 0
+workers: null                  # processes for the one-off JSON cleaning (null = CPU count, max 8)
+
+# Steps 0b/1: research_v1 baseline (expanded A). Existing research_v1 checkpoints are re-scored
+# read-only when present; otherwise the same recipe is retrained into research_v2.
+recipes:
+  v1:
+    train_files: 100
+    max_train_windows: null
+    epochs: 15
+    batch_size: 32
+    learning_rate: 0.001
+    cosine: false
+    patience: null
+    amp: false
+    augment: null
+  all_aug:                     # step 4: every RetailS_train part + light augmentation, GPU recipe
+    train_files: null          # null = all files
+    max_train_windows: 600000  # uniform sample over all files (memory cap on a free Colab)
+    epochs: 40
+    batch_size: 1024
+    learning_rate: 0.003
+    cosine: true
+    patience: 6
+    amp: true
+    augment: {flip: 0.5, scale: 0.1, rotate_deg: 10, jitter: 0.01, joint_dropout: 0.1}
+hidden_size: 128
+num_layers: 2
+dropout: 0.2
+eval_batch_size: 4096
+
+baseline_window: [30, 15]
+
+# Step 2: window scoring variants x optional per-camera normalisation.
+variants: [mean, max_joint, topk3, topk5, upper_body, no_face]
+camnorm: [false, true]
+# Step 3: Gaussian smoothing sigma (frames), per track then per frame, never across gaps.
+sigmas: [0, 2, 4, 8, 16]
+# Step 5: window length / stride candidates (the first is the baseline).
+windows: [[30, 15], [24, 6], [16, 4]]
+
+# Step 6: STG-NF-style flow. auto = run only if steps 4 and 5 both gained less than their CI
+# half-width on both dev folds (plateau); always / never override.
+experiment_f: auto
+flow:
+  epochs: 12
+  batch_size: 512
+  learning_rate: 0.0005
+  weight_decay: 0.00005
+  cosine: true
+  patience: 4
+  flow_hidden: 32
+  flow_steps: 8
+  augment: {flip: 0.5, scale: 0.1, rotate_deg: 10, jitter: 0.0}
