@@ -124,3 +124,103 @@ def plot_reconstruction_error_histogram(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_path, dpi=150)
     plt.close()
+
+
+# --------------------------------------------------------------------------------------------
+# research_v2 additions (the functions above are unchanged so research_v1 stays reproducible)
+# --------------------------------------------------------------------------------------------
+
+def fast_roc_auc(labels: np.ndarray, scores: np.ndarray) -> float:
+    """Rank-based (Mann-Whitney) ROC-AUC with tie averaging; NaN if one class is absent."""
+    from scipy.stats import rankdata
+    labels = np.asarray(labels).astype(bool)
+    n_pos = int(labels.sum())
+    n_neg = len(labels) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return float('nan')
+    ranks = rankdata(np.asarray(scores, dtype=np.float64))
+    return float((ranks[labels].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
+
+
+def recall_at_fpr(labels, scores, fpr_target=0.05) -> float:
+    from sklearn.metrics import roc_curve
+    labels = np.asarray(labels).astype(int)
+    if len(np.unique(labels)) < 2:
+        return float('nan')
+    fpr, tpr, _ = roc_curve(labels, scores)
+    return float(np.max(tpr[fpr <= fpr_target])) if np.any(fpr <= fpr_target) else 0.0
+
+
+def specificity_at_recall(labels, scores, recall_target=0.9) -> float:
+    from sklearn.metrics import roc_curve
+    labels = np.asarray(labels).astype(int)
+    if len(np.unique(labels)) < 2:
+        return float('nan')
+    fpr, tpr, _ = roc_curve(labels, scores)
+    ok = tpr >= recall_target
+    return float(1 - np.min(fpr[ok])) if np.any(ok) else 0.0
+
+
+def balanced_accuracy(labels, scores, threshold) -> float:
+    labels = np.asarray(labels).astype(int)
+    pred = np.asarray(scores) >= threshold
+    tpr = pred[labels == 1].mean() if (labels == 1).any() else float('nan')
+    tnr = (~pred[labels == 0]).mean() if (labels == 0).any() else float('nan')
+    return float(np.nanmean([tpr, tnr]))
+
+
+def grouped_bootstrap(labels, scores, groups, metric=None, draws=1000, seed=0, alpha=0.05):
+    """Percentile CI that resamples whole groups (videos) with replacement.
+
+    Frames of one video are strongly correlated, so resampling frames would make
+    the interval far too narrow. Returns (low, high, samples)."""
+    metric = metric or fast_roc_auc
+    labels, scores, groups = np.asarray(labels), np.asarray(scores), np.asarray(groups)
+    uniq, inverse = np.unique(groups, return_inverse=True)
+    order = np.argsort(inverse, kind='stable')
+    bounds = np.concatenate([[0], np.cumsum(np.bincount(inverse, minlength=len(uniq)))])
+    members = [order[bounds[i]:bounds[i + 1]] for i in range(len(uniq))]
+    rng = np.random.default_rng(seed)
+    out = []
+    for _ in range(draws):
+        pick = rng.integers(0, len(uniq), len(uniq))
+        idx = np.concatenate([members[i] for i in pick])
+        value = metric(labels[idx], scores[idx])
+        if np.isfinite(value):
+            out.append(value)
+    if not out:
+        return float('nan'), float('nan'), np.array([])
+    out = np.asarray(out)
+    return float(np.quantile(out, alpha / 2)), float(np.quantile(out, 1 - alpha / 2)), out
+
+
+def detection_metrics(labels, scores, threshold, cameras=None, groups=None, draws=1000, seed=0) -> dict:
+    """All research_v2 metrics for one set of (frame or window) scores."""
+    labels = np.asarray(labels).astype(int)
+    scores = np.asarray(scores, dtype=np.float64)
+    has_both = len(np.unique(labels)) == 2
+    pred = scores >= threshold
+    out = dict(n=int(len(labels)), num_normal=int((labels == 0).sum()), num_anomaly=int((labels == 1).sum()),
+               base_rate=float(labels.mean()) if len(labels) else float('nan'), threshold=float(threshold),
+               roc_auc=fast_roc_auc(labels, scores),
+               pr_auc=float(average_precision_score(labels, scores)) if has_both else float('nan'),
+               balanced_accuracy=balanced_accuracy(labels, scores, threshold),
+               recall=float(pred[labels == 1].mean()) if (labels == 1).any() else float('nan'),
+               specificity=float((~pred[labels == 0]).mean()) if (labels == 0).any() else float('nan'),
+               recall_at_fpr5=recall_at_fpr(labels, scores, 0.05),
+               specificity_at_recall90=specificity_at_recall(labels, scores, 0.9))
+    out['pr_auc_lift'] = out['pr_auc'] / out['base_rate'] if has_both else float('nan')
+    if cameras is not None:
+        cameras = np.asarray(cameras)
+        per = {}
+        for c in np.unique(cameras):
+            m = cameras == c
+            per[int(c)] = fast_roc_auc(labels[m], scores[m])
+        vals = np.array([v for v in per.values() if np.isfinite(v)])
+        out['per_camera_auc'] = per
+        out['camera_auc_mean'] = float(vals.mean()) if len(vals) else float('nan')
+        out['camera_auc_std'] = float(vals.std()) if len(vals) else float('nan')
+    if groups is not None and draws and has_both:
+        lo, hi, _ = grouped_bootstrap(labels, scores, groups, draws=draws, seed=seed)
+        out['roc_auc_ci'] = [lo, hi]
+    return out
